@@ -2,8 +2,8 @@
 #                                                                              #
 # 	Module:       main.py                                                      #
 # 	Author:       ari                                                          #
-# 	Created:      10/22/2025, 11:33:54 PM                                       #
-# 	Description:  V5 project                                                   #
+# 	Created:      10/22/2025, 11:33:54 PM                                     #
+# 	Description:  V5 Arcade Drive (One Joystick, Correct Direction)            #
 #                                                                              #
 # ---------------------------------------------------------------------------- #
 
@@ -13,7 +13,7 @@ from vex import *
 brain = Brain()
 controller = Controller(PRIMARY)
 
-# Left side motors (ports 1, 2, 3)
+# Left side motors (ports 11, 12, 13)
 left_motor_1 = Motor(Ports.PORT11, GearSetting.RATIO_18_1, False)
 left_motor_2 = Motor(Ports.PORT12, GearSetting.RATIO_18_1, False)
 left_motor_3 = Motor(Ports.PORT13, GearSetting.RATIO_18_1, False)
@@ -32,16 +32,16 @@ DEADBAND = 5
 def autonomous():
     brain.screen.clear_screen()
     brain.screen.print("autonomous code")
-    # place automonous code here
+    # place autonomous code here
 
 def user_control():
     brain.screen.clear_screen()
     brain.screen.print("driver control")
-    # place driver control in this while loop
+
     while True:
         # Read joystick values
-        forward = controller.axis3.position()  # Up/Down
-        turn = controller.axis1.position()     # Left/Right
+        forward = -controller.axis3.position()  # Inverted so pushing forward drives forward
+        turn = controller.axis1.position()       # Left/Right
 
         # Apply deadband
         if abs(forward) < DEADBAND:
@@ -61,11 +61,11 @@ def user_control():
         left_drive.spin(FORWARD, left_speed, PERCENT)
         right_drive.spin(FORWARD, right_speed, PERCENT)
 
-        # Wait a bit to avoid CPU overload
+        # Prevent CPU overload
         wait(20, MSEC)
 
-# create competition instance
+# Create competition instance
 comp = Competition(user_control, autonomous)
 
-# actions to do when the program starts
+# Actions to do when the program starts
 brain.screen.clear_screen()
