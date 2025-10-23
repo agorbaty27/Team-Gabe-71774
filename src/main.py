@@ -24,8 +24,8 @@ right_motor_2 = Motor(Ports.PORT2, GearSetting.RATIO_18_1, True)
 right_motor_3 = Motor(Ports.PORT3, GearSetting.RATIO_18_1, True)
 
 # Group the motors for each side
-left_drive = MotorGroup(left_motor_1, left_motor_2, left_motor_3)
-right_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
+right_drive = MotorGroup(left_motor_1, left_motor_2, left_motor_3)
+left_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
 
 DEADBAND = 5
 
