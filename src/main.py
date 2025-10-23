@@ -50,8 +50,8 @@ def user_control():
             turn = 0
 
         # Calculate motor speeds
-        left_speed = forward + turn
-        right_speed = forward - turn
+        left_speed = forward - turn
+        right_speed = forward + turn
 
         # Clamp values to -100% to 100%
         left_speed = max(-100, min(100, left_speed))
