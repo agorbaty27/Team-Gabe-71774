@@ -44,6 +44,7 @@ def driver_control():
             push_motor.stop(HOLD)
         print("Hello world!")
         wait(20, MSEC)  # Prevents wasting CPU cycles
+        print("Hello world!") 
 
 # ---------------------------------------------------------
 # Main program
