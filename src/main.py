@@ -27,6 +27,12 @@ right_motor_3 = Motor(Ports.PORT3, GearSetting.RATIO_18_1, True)
 left_drive = MotorGroup(left_motor_1, left_motor_2, left_motor_3)
 right_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
 
+intake_1 = Motor(Ports.PORT20, GearSetting.RATIO_18_1, False)
+intake_2 = Motor(Ports.PORT6, GearSetting.RATIO_18_1, True)
+
+intake = MotorGroup(intake_1, intake_2)
+
+
 DEADBAND = 5
 
 def autonomous():
@@ -61,6 +67,13 @@ def user_control():
         left_drive.spin(FORWARD, left_speed, PERCENT)
         right_drive.spin(FORWARD, right_speed, PERCENT)
 
+        if controller.buttonR1.pressing():
+            intake.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonR2.pressing():
+            intake.spin(REVERSE, 100, PERCENT)
+        else:
+            intake.stop(COAST)
+            
         # Prevent CPU overload
         wait(20, MSEC)
 
