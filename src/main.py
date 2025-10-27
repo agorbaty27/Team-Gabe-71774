@@ -76,11 +76,15 @@ def user_control():
             intake.stop(COAST)
 
         if controller.buttonA.pressing():
-            piston.set(True)
+            if not button_pressed:
+                # Toggle piston state
+                piston_state = not piston_state
+                piston.set(piston_state)
+                button_pressed = True
         else:
-            piston.set(False)
-            
-        # Prevent CPU overload
+            button_pressed = False  # Reset when button released
+                
+            # Prevent CPU overload
         wait(20, MSEC)
 
 # Create competition instance
