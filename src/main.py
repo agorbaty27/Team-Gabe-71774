@@ -12,6 +12,7 @@ from vex import *
 
 brain = Brain()
 controller = Controller(PRIMARY)
+piston = DigitalOut(brain.three_wire_port.h)
 
 # Left side motors (ports 11, 12, 13)
 left_motor_1 = Motor(Ports.PORT11, GearSetting.RATIO_18_1, False)
@@ -73,6 +74,11 @@ def user_control():
             intake.spin(REVERSE, 100, PERCENT)
         else:
             intake.stop(COAST)
+
+        if controller.buttonA.pressing():
+            piston.set(True)
+        else:
+            piston.set(False)
             
         # Prevent CPU overload
         wait(20, MSEC)
