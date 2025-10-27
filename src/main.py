@@ -30,8 +30,9 @@ right_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
 
 intake_1 = Motor(Ports.PORT20, GearSetting.RATIO_18_1, False)
 intake_2 = Motor(Ports.PORT6, GearSetting.RATIO_18_1, True)
+intake_3 = Motor(Ports.PORT10, GearSetting.RATIO_18_1, True)
 
-intake = MotorGroup(intake_1, intake_2)
+intake = MotorGroup(intake_1, intake_2, intake_3)
 
 
 DEADBAND = 5
