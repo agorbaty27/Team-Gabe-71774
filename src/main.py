@@ -35,58 +35,76 @@ wait(200, MSEC)
 print("\033[2J")
 
 #endregion VEXcode Generated Robot Configuration
+
 # ---------------------------------------------------------------------------- #
-#                                                                              #
-# 	Module:       main.py                                                      #
-# 	Author:       ari                                                          #
-# 	Created:      10/22/2025, 11:33:54 PM                                     #
-# 	Description:  V5 Arcade Drive (One Joystick, Correct Direction)            #
-#                                                                              #
+# 	Module:       main.py
+# 	Author:       ari
+# 	Description:  V5 Arcade Drive with Independent Intakes
 # ---------------------------------------------------------------------------- #
 
-# Library imports
-from vex import *
-
-brain = Brain()
+# Controller setup
 controller = Controller(PRIMARY)
+
+# Pneumatics
 piston = DigitalOut(brain.three_wire_port.h)
+piston_state = False
+button_pressed = False
 
-# Left side motors (ports 11, 12, 13)
-left_motor_1 = Motor(Ports.PORT11, GearSetting.RATIO_18_1, False)
-left_motor_2 = Motor(Ports.PORT12, GearSetting.RATIO_18_1, False)
-left_motor_3 = Motor(Ports.PORT13, GearSetting.RATIO_18_1, False)
+# Drive motors
+left_motor_1 = Motor(Ports.PORT11, GearSetting.RATIO_18_1, True)
+left_motor_2 = Motor(Ports.PORT12, GearSetting.RATIO_18_1, True)
+left_motor_3 = Motor(Ports.PORT13, GearSetting.RATIO_18_1, True)
 
-# Right side motors (ports 1, 2, 3)
-right_motor_1 = Motor(Ports.PORT1, GearSetting.RATIO_18_1, True)
-right_motor_2 = Motor(Ports.PORT2, GearSetting.RATIO_18_1, True)
-right_motor_3 = Motor(Ports.PORT3, GearSetting.RATIO_18_1, True)
+# Right side motors
+right_motor_1 = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
+right_motor_2 = Motor(Ports.PORT2, GearSetting.RATIO_18_1, False)
+right_motor_3 = Motor(Ports.PORT3, GearSetting.RATIO_18_1, False)
 
-# Group the motors for each side
+# Group drive motors
 left_drive = MotorGroup(left_motor_1, left_motor_2, left_motor_3)
 right_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
 
-intake_1 = Motor(Ports.PORT20, GearSetting.RATIO_18_1, False)
-intake_2 = Motor(Ports.PORT6, GearSetting.RATIO_18_1, True)
-intake_3 = Motor(Ports.PORT10, GearSetting.RATIO_18_1, True)
 
-intake = MotorGroup(intake_1, intake_2, intake_3)
+intake_motor_1 = Motor(Ports.PORT20, GearSetting.RATIO_18_1, False)
+intake_motor_2 = Motor(Ports.PORT6, GearSetting.RATIO_18_1, True)
+intake_motor_3 = Motor(Ports.PORT10, GearSetting.RATIO_18_1, True)
 
+# Group all intake motors together
+intake = MotorGroup(intake_motor_1, intake_motor_2, intake_motor_3)
+
+SMOOTHING = 0.15  # lower = smoother (0.05–0.3 typical)
+EXPONENT = 2.4    # exponential response curve (2 = mild, 3 = strong)
+
+# Start at 0 speed for ramping
+current_left_speed = 0.0
+current_right_speed = 0.0
+
+# -----------------------------
+# Helper Function: Exponential Joystick Mapping
+# -----------------------------
+def expo_curve(value):
+    """Map joystick input (-100 to 100) to exponential curve."""
+    sign = 1 if value >= 0 else -1
+    normalized = abs(value) / 100
+    curved = (normalized ** EXPONENT) * 100
+    return curved * sign
 
 DEADBAND = 5
 
 def autonomous():
     brain.screen.clear_screen()
     brain.screen.print("autonomous code")
-    # place autonomous code here
+    # Autonomous routine here
 
 def user_control():
     brain.screen.clear_screen()
     brain.screen.print("driver control")
 
     while True:
-        # Read joystick values
-        forward = -controller.axis3.position()  # Inverted so pushing forward drives forward
-        turn = controller.axis1.position()       # Left/Right
+        global current_left_speed, current_right_speed 
+                # --- DRIVE CONTROL ---
+        forward = controller.axis3.position()
+        turn = controller.axis1.position()
 
         # Apply deadband
         if abs(forward) < DEADBAND:
@@ -94,17 +112,25 @@ def user_control():
         if abs(turn) < DEADBAND:
             turn = 0
 
-        # Calculate motor speeds
-        left_speed = forward - turn
-        right_speed = forward + turn
+        # Apply exponential response
+        forward = expo_curve(forward)
+        turn = expo_curve(turn)
 
-        # Clamp values to -100% to 100%
-        left_speed = max(-75, min(75, left_speed))
-        right_speed = max(-75, min(75, right_speed))
+        # Calculate target speeds
+        target_left = forward + turn
+        target_right = forward - turn
 
-        # Spin the motors
-        left_drive.spin(FORWARD, left_speed, PERCENT)
-        right_drive.spin(FORWARD, right_speed, PERCENT)
+        # Clamp to range
+        target_left = max(-100, min(100, target_left))
+        target_right = max(-100, min(100, target_right))
+
+        # --- SMOOTHING / ACCELERATION CONTROL ---
+        current_left_speed += (target_left - current_left_speed) * SMOOTHING
+        current_right_speed += (target_right - current_right_speed) * SMOOTHING
+
+        # Spin drive motors
+        left_drive.spin(FORWARD, current_left_speed, PERCENT)
+        right_drive.spin(FORWARD, current_right_speed, PERCENT)
 
         if controller.buttonR1.pressing():
             intake.spin(FORWARD, 100, PERCENT)
@@ -113,20 +139,10 @@ def user_control():
         else:
             intake.stop(COAST)
 
-        if controller.buttonA.pressing():
-            if not button_pressed:
-                # Toggle piston state
-                piston_state = not piston_state
-                piston.set(piston_state)
-                button_pressed = True
-        else:
-            button_pressed = False  # Reset when button released
-                
             # Prevent CPU overload
         wait(20, MSEC)
 
-# Create competition instance
+# Competition instance
 comp = Competition(user_control, autonomous)
 
-# Actions to do when the program starts
 brain.screen.clear_screen()
