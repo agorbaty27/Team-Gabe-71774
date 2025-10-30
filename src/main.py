@@ -139,6 +139,13 @@ def user_control():
         else:
             intake.stop(COAST)
 
+        # Separate control for port 6 (L1/L2) — overrides group only when pressed
+        if controller.buttonL1.pressing():
+            intake_motor_2.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonL2.pressing():
+            intake_motor_2.spin(REVERSE, 100, PERCENT)
+
+
             # Prevent CPU overload
         wait(20, MSEC)
 
