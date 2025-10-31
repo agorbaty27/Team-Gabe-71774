@@ -72,7 +72,7 @@ intake_motor_3 = Motor(Ports.PORT10, GearSetting.RATIO_18_1, True)
 # Group all intake motors together
 intake = MotorGroup(intake_motor_1, intake_motor_2, intake_motor_3)
 
-SMOOTHING = 0.15  # lower = smoother (0.05–0.3 typical)
+SMOOTHING = 0.10  # lower = smoother (0.05–0.3 typical)
 EXPONENT = 2.4    # exponential response curve (2 = mild, 3 = strong)
 
 # Start at 0 speed for ramping
@@ -94,8 +94,8 @@ DEADBAND = 5
 def autonomous():
     brain.screen.clear_screen()
     brain.screen.print("autonomous code")
-    # Autonomous routine here
-
+    brain.screen.clear_screen()
+    
 def user_control():
     brain.screen.clear_screen()
     brain.screen.print("driver control")
@@ -114,15 +114,15 @@ def user_control():
 
         # Apply exponential response
         forward = expo_curve(forward)
-        turn = expo_curve(turn)
+        turn = expo_curve(turn) * 0.6
 
         # Calculate target speeds
         target_left = forward + turn
         target_right = forward - turn
 
         # Clamp to range
-        target_left = max(-100, min(100, target_left))
-        target_right = max(-100, min(100, target_right))
+        target_left = max(-80, min(80, target_left))
+        target_right = max(-80, min(80, target_right))
 
         # --- SMOOTHING / ACCELERATION CONTROL ---
         current_left_speed += (target_left - current_left_speed) * SMOOTHING
