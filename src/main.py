@@ -70,11 +70,9 @@ drivetrain = DriveTrain(left_drive, right_drive)
 
 intake_motor_1 = Motor(Ports.PORT20, GearSetting.RATIO_18_1, True)
 intake_motor_3 = Motor(Ports.PORT10, GearSetting.RATIO_6_1, True)
-intake_motor_3_false = Motor(Ports.PORT10, GearSetting.RATIO_6_1, False)
 
-# Group all intake motors together
-intake = MotorGroup(intake_motor_1, intake_motor_3)
-intake_2 = MotorGroup(intake_motor_1, intake_motor_3_false)
+
+intake = MotorGroup(intake_motor_1, intake_motor_3)          
 
 # Odometry sensors
 odom_sensor = Rotation(Ports.PORT14)
@@ -144,11 +142,11 @@ def run_path(steps):
         elif action == "intake":
             power = step[1]
             time_sec = step[2]
-            intake_2.spin(FORWARD if power > 0 else REVERSE, abs(power), PERCENT)
+            intake.spin(FORWARD if power > 0 else REVERSE, abs(power), PERCENT)
             wait(time_sec, SECONDS)
 
         elif action == "intake_stop":
-            intake_2.stop(COAST)
+            intake.stop(COAST)
 
         wait(50, MSEC)
 
@@ -211,20 +209,25 @@ def driving():
     wait (10, MSEC)
 
 def intaking():
+    # Main intake (R1/R2)
     if controller.buttonR1.pressing():
         intake.spin(FORWARD, 100, PERCENT)
     elif controller.buttonR2.pressing():
         intake.spin(REVERSE, 100, PERCENT)
+
+    elif controller.buttonL2.pressing():
+        intake_motor_1.spin(REVERSE, 100, PERCENT)
+        intake_motor_3.spin(FORWARD, 100, PERCENT)
+      
+    elif controller.buttonL1.pressing():
+        intake.spin(FORWARD, 100, PERCENT)
+
     else:
         intake.stop(COAST)
 
-    if controller.buttonL1.pressing():
-        intake.spin(FORWARD, 100, PERCENT)
 
+    wait(10, MSEC)
 
-    elif controller.buttonL2.pressing():
-        intake_2.spin(FORWARD, 100, PERCENT)
-  
     
 def piston():
     if controller.buttonX.pressing():
@@ -249,14 +252,7 @@ def piston():
 
 def autonomous():
     path = [
-        ("intake", 100, 0.1),
-        ("drive", 22),
-        ("intake_stop"),
-        ("turn", -23.5),
-        ("drive", 20),
-        ("intake", -100, 3),
-        ("intake_stop")
-
+        ("drive", 2)
     ]
     run_path(path)
 
