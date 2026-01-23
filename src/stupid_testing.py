@@ -232,6 +232,7 @@ def user_control():
         driving()
         intaking()
         piston()
+        brain.print("yay")
 
        
         wait(20, MSEC)
