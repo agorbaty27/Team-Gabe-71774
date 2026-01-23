@@ -42,27 +42,21 @@ print("\033[2J")
 # 	Description:  V5 Arcade Drive with Independent Intakes
 # ---------------------------------------------------------------------------- #
 
-# Controller setup
 controller = Controller(PRIMARY)
 
-# Pneumatics
-# Solenoid on Port H (A side = extend, B side = retract)
-piston1 = DigitalOut(brain.three_wire_port.f)  # piston on side A
+piston1 = DigitalOut(brain.three_wire_port.f)  
 piston2 = DigitalOut(brain.three_wire_port.e)
 piston3 = DigitalOut(brain.three_wire_port.d)
+piston4 = DigitalOut(brain.three_wire_port.b)
 
-
-# Drive motors
 left_motor_1 = Motor(Ports.PORT11, GearSetting.RATIO_18_1, True)
 left_motor_2 = Motor(Ports.PORT12, GearSetting.RATIO_18_1, True)
 left_motor_3 = Motor(Ports.PORT13, GearSetting.RATIO_18_1, True)
 
-# Right side motors
 right_motor_1 = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
 right_motor_2 = Motor(Ports.PORT2, GearSetting.RATIO_18_1, False)
 right_motor_3 = Motor(Ports.PORT3, GearSetting.RATIO_18_1, False)
 
-# Group drive motors
 left_drive = MotorGroup(left_motor_1, left_motor_2, left_motor_3)
 right_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
 
@@ -74,13 +68,12 @@ intake_motor_3 = Motor(Ports.PORT10, GearSetting.RATIO_6_1, True)
 
 intake = MotorGroup(intake_motor_1, intake_motor_3)          
 
-# Odometry sensors
 odom_sensor = Rotation(Ports.PORT14)
 odom_sensor.reset_position()
 
 WHEEL_DIAMETER_IN = 2.0
 WHEEL_CIRCUMFERENCE_IN = math.pi * WHEEL_DIAMETER_IN
-TICKS_PER_REV = 360.0  # Rotation sensor gives degrees, 360 per full turn
+TICKS_PER_REV = 360.0  
 
 inertial_sensor = Inertial(Ports.PORT15)
 inertial_sensor.calibrate()
@@ -89,13 +82,6 @@ while inertial_sensor.is_calibrating():
     wait(100, MSEC)
 brain.screen.clear_screen()
 brain.screen.print("Inertial Ready")
-
-# -----------------------------------------------------------
-# BASIC AUTON MOVEMENT HELPERS
-# -----------------------------------------------------------
-# -----------------------------------------------------------
-# ODOM + INERTIAL SIMPLE AUTON HELPERS
-# -----------------------------------------------------------
 
 def drive_inches_odom(inches, speed=40):
     """Drive forward/backward using the rotation sensor for distance."""
@@ -152,16 +138,14 @@ def run_path(steps):
 
 
 
-SMOOTHING = 0.12  # lower = smoother (0.05–0.3 typical)
-EXPONENT = 1.5    # exponential response curve (2 = mild, 3 = strong)
+SMOOTHING = 0.12  
+EXPONENT = 1.5    
 
-# Start at 0 speed for ramping
+
 current_left_speed = 0.0
 current_right_speed = 0.0
 
-# -----------------------------
-# Helper Function: Exponential Joystick Mapping
-# -----------------------------
+
 def expo_curve(value):
     """Map joystick input (-100 to 100) to exponential curve."""
     sign = 1 if value >= 0 else -1
@@ -171,37 +155,38 @@ def expo_curve(value):
 
 DEADBAND = 5
 
-# Odom constants
-
 def driving():
     global current_left_speed, current_right_speed 
-                # --- DRIVE CONTROL ---
+              
     forward = controller.axis3.position()
     turn = controller.axis1.position()
 
-        # Apply deadband
+
     if abs(forward) < DEADBAND:
         forward = 0
     if abs(turn) < DEADBAND:
         turn = 0
 
-        # Apply exponential response
+    if forward == 0 and turn == 0:
+        current_left_speed = 0
+        current_right_speed = 0
+        left_drive.stop(COAST)
+        right_drive.stop(COAST)
+        return
+
+      
     forward = expo_curve(forward)
     turn = expo_curve(turn) * 0.5
 
-        # Calculate target speeds
     target_left = forward + turn
     target_right = forward - turn
 
-        # Clamp to range
     target_left = max(-100, min(100, target_left))
     target_right = max(-100, min(100, target_right))
 
-        # --- SMOOTHING / ACCELERATION CONTROL ---
     current_left_speed += (target_left - current_left_speed) * SMOOTHING
     current_right_speed += (target_right - current_right_speed) * SMOOTHING
 
-        # Spin drive motors
     left_drive.spin(FORWARD, current_left_speed, PERCENT)
     right_drive.spin(FORWARD, current_right_speed, PERCENT)
 
@@ -213,19 +198,14 @@ def intaking():
         intake.spin(FORWARD, 100, PERCENT)
     elif controller.buttonR2.pressing():
         intake.spin(REVERSE, 100, PERCENT)
-
-
-    # Secondary intake control (L1/L2), same motor but reversed orientation
-    elif controller.buttonL2.pressing():
-        intake_motor_1.spin(REVERSE, 100, PERCENT)
-        intake_motor_3.spin(FORWARD, 100, PERCENT)
-
-      
-    elif controller.buttonL1.pressing():
-        intake.spin(FORWARD, 100, PERCENT)
+    
+    if controller.buttonL2.pressing():
+        intake.spin(REVERSE, 100, PERCENT)
+        piston4.set(True)
 
     else:
         intake.stop(COAST)
+        piston4.set(False)
 
 
     wait(10, MSEC)
@@ -253,45 +233,9 @@ def piston():
 def autonomous():
 
     path = [
- # 1. Initial long forward path (from -39 to -118)
-    ("drive", 28.5),     # Adjust to your robot’s scale
-
-    # 2. 90° right turn
-    ("turn", 24),
-
-
-] 
-
-    path_2 = [
-    # 3. Short forward push
-    ("drive", 1),
-
-]
-
-    path_3 = [
-
-    # 4. Reverse back to original line
-
-
-    # Optional stop
-    ("intake_stop"),
-]
+    ("drive", 2), ] 
 
     run_path(path)
-    piston2.set(True)
-    wait(1, SECONDS)
-    run_path(path_2)
-    intake_motor_1.spin(REVERSE, 100, PERCENT)
-    intake_motor_3.spin(FORWARD, 100, PERCENT)
-    drivetrain.drive(FORWARD, 65, PERCENT)
-    wait(3, SECONDS)
-    drivetrain.stop()
-    drivetrain.drive(REVERSE, 25, PERCENT)
-    wait(2, SECONDS)
-    intake.spin(REVERSE, 100, PERCENT)
-    
-
-
 
 
 def user_control():
@@ -304,12 +248,8 @@ def user_control():
         piston()
 
        
-
-
-            # Prevent CPU overload
         wait(20, MSEC)
 
-# Competition instance
 comp = Competition(user_control, autonomous)
 
 brain.screen.clear_screen()
