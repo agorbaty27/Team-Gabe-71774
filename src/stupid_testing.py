@@ -134,39 +134,25 @@ def run_path(steps):
             intake.stop(COAST)
 
         wait(50, MSEC)
-
-
-
-
-SMOOTHING = 0.12  
-EXPONENT = 1.5    
-
+        
+SMOOTHING = 0.12
+DEADBAND = 5
 
 current_left_speed = 0.0
 current_right_speed = 0.0
 
 
-def expo_curve(value):
-    """Map joystick input (-100 to 100) to exponential curve."""
-    sign = 1 if value >= 0 else -1
-    normalized = abs(value) / 100
-    curved = (normalized ** EXPONENT) * 100
-    return curved * sign
+def apply_deadband(value):
+    return 0 if abs(value) < DEADBAND else value
 
-DEADBAND = 5
 
 def driving():
-    global current_left_speed, current_right_speed 
-              
-    forward = controller.axis3.position()
-    turn = controller.axis1.position()
+    global current_left_speed, current_right_speed
 
+    forward = apply_deadband(controller.axis3.position())
+    turn = apply_deadband(controller.axis1.position()) * 0.5  # reduce turning sensitivity
 
-    if abs(forward) < DEADBAND:
-        forward = 0
-    if abs(turn) < DEADBAND:
-        turn = 0
-
+    # Stop if joystick is centered
     if forward == 0 and turn == 0:
         current_left_speed = 0
         current_right_speed = 0
@@ -174,23 +160,23 @@ def driving():
         right_drive.stop(COAST)
         return
 
-      
-    forward = expo_curve(forward)
-    turn = expo_curve(turn) * 0.5
-
+    # Linear tank mix
     target_left = forward + turn
     target_right = forward - turn
 
+    # Clamp to motor limits
     target_left = max(-100, min(100, target_left))
     target_right = max(-100, min(100, target_right))
 
+    # Slew rate limiting (smoothing)
     current_left_speed += (target_left - current_left_speed) * SMOOTHING
     current_right_speed += (target_right - current_right_speed) * SMOOTHING
 
     left_drive.spin(FORWARD, current_left_speed, PERCENT)
     right_drive.spin(FORWARD, current_right_speed, PERCENT)
 
-    wait (10, MSEC)
+    wait(10, MSEC)
+
 
 def intaking():
     # Main intake (R1/R2)
