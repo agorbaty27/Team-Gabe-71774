@@ -145,6 +145,15 @@ current_right_speed = 0.0
 def apply_deadband(value):
     return 0 if abs(value) < DEADBAND else value
 
+def expo(value, expo_amount=2.0):
+    """
+    Exponential joystick curve.
+    expo_amount > 1 = more aggressive curve
+    """
+    sign = 1 if value >= 0 else -1
+    normalized = abs(value) / 100  # 0 → 1
+    curved = normalized ** expo_amount
+    return sign * curved * 100
 
 def driving():
     global current_left_speed, current_right_speed
