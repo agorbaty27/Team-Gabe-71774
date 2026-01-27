@@ -194,7 +194,7 @@ def intaking():
     elif controller.buttonR2.pressing():
         intake.spin(REVERSE, 100, PERCENT)
     
-    if controller.buttonL2.pressing():
+    elif controller.buttonL2.pressing():
         intake.spin(REVERSE, 100, PERCENT)
         piston4.set(True)
 
