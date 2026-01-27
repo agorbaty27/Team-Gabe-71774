@@ -251,9 +251,8 @@ def driving():
     global current_left_speed, current_right_speed
 
     forward = apply_deadband(controller.axis3.position())
-    turn = apply_deadband(controller.axis1.position()) * 0.5  # reduce turning sensitivity
+    turn = apply_deadband(controller.axis1.position()) * 0.5  
 
-    # Stop if joystick is centered
     if forward == 0 and turn == 0:
         current_left_speed = 0
         current_right_speed = 0
@@ -261,19 +260,18 @@ def driving():
         right_drive.stop(COAST)
         return
 
-    # Linear tank mix
+
     target_left = forward + turn
     target_right = forward - turn
 
-    # Clamp to motor limits
     target_left = max(-100, min(100, target_left))
     target_right = max(-100, min(100, target_right))
 
-    # Slew rate limiting (smoothing)
+
     current_left_speed += (target_left - current_left_speed) * SMOOTHING
     current_right_speed += (target_right - current_right_speed) * SMOOTHING
 
-    # Spin with correct direction handling
+
     left_drive.spin(FORWARD if current_left_speed >= 0 else REVERSE, abs(current_left_speed), PERCENT)
     right_drive.spin(FORWARD if current_right_speed >= 0 else REVERSE, abs(current_right_speed), PERCENT)
 
