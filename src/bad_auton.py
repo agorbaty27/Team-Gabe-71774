@@ -190,7 +190,6 @@ def simplify_path(waypoints, tolerance=1.0):
     return simplified
 
 
-
 def convert_jerry_path(path):
     """
     Convert (x, y) path into TURN + DRIVE commands using atan2 for direction.
