@@ -76,8 +76,8 @@ WHEEL_CIRCUMFERENCE_IN = math.pi * WHEEL_DIAMETER_IN
 TICKS_PER_REV = 360.0  
 
 # Tuning multipliers - adjust these to calibrate odometry and turning
-ODOMETRY_CORRECTION = 1.0  # Multiply drive distance by this value
-TURNING_CORRECTION = 1.0   # Multiply turn angle by this value
+ODOMETRY_CORRECTION = 0.9  # Multiply drive distance by this value
+TURNING_CORRECTION = 0.75   # Multiply turn angle by this value
 
 inertial_sensor = Inertial(Ports.PORT15)
 inertial_sensor.calibrate()
@@ -105,6 +105,7 @@ def drive_inches_odom(inches, speed=40):
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
+    wait(10,MSEC)
 
 
 def turn_degrees_inertial(angle, speed=40):
@@ -117,6 +118,7 @@ def turn_degrees_inertial(angle, speed=40):
         drivetrain.turn_for(RIGHT, corrected_angle, DEGREES)
     else:
         drivetrain.turn_for(LEFT, -corrected_angle, DEGREES)
+    wait(10,MSEC)
 
 
 def run_path(steps):
@@ -390,6 +392,49 @@ def autonomous():
     current_left = 0
     current_right = 0
     # Paste your jerry.io path below (list of tuples: (x, y))
+
+    path = [
+ # 1. Initial long forward path (from -39 to -118)
+    ("drive", 30),
+       
+
+    # 2. 90° right turn
+    ("turn", -90),
+
+
+] 
+
+    path_2 = [
+    # 3. Short forward push
+    ("drive", 1),
+
+]
+
+    path_3 = [
+
+    # 4. Reverse back to original line
+
+
+    # Optional stop
+    ("intake_stop"),
+]
+
+    run_path(path)
+    piston2.set(True)
+    wait(1, SECONDS)
+    run_path(path_2)
+    intake.spin(REVERSE, 100, PERCENT)
+
+    drivetrain.drive(FORWARD, 65, PERCENT)
+    wait(1.5, SECONDS)
+    drivetrain.stop()
+    drivetrain.drive(REVERSE, 25, PERCENT)
+    wait(2, SECONDS)
+    piston4.set(True)
+    intake.spin(REVERSE, 100, PERCENT)
+    
+
+
     
     test_path = [
     (-49.084, -14.683),
@@ -717,14 +762,16 @@ def autonomous():
     (-62.323, 0.073),
     (-62.293, 1.237),
     ]
-    
+
     # Simplify path to reduce waypoints
-    simplified_path = simplify_path(test_path, tolerance=1.0)
+    #simplified_path = simplify_path(test_path, tolerance=1)
     
     # Convert jerry path to commands
-    path = convert_jerry_path(simplified_path)
+    #path = convert_jerry_path(simplified_path)
     
-    run_smooth_path(path)
+    #run_path(path)
+
+
 
 
 def user_control():
