@@ -3,7 +3,6 @@ from vex import *
 import urandom
 import math
 
-# Brain should be defined by default
 brain=Brain()
 
 # Robot configuration code
@@ -387,53 +386,56 @@ def run_smooth_path(commands):
             turn_smooth(cmd[1])
         wait(40, MSEC)
 
-def autonomous():
-    global current_left, current_right
-    current_left = 0
-    current_right = 0
-    # Paste your jerry.io path below (list of tuples: (x, y))
-
-    path = [
- # 1. Initial long forward path (from -39 to -118)
-    ("drive", 30),
-       
-
-    # 2. 90° right turn
-    ("turn", -90),
-
-
-] 
-
     path_2 = [
     # 3. Short forward push
     ("drive", 1),
 
 ]
 
-    path_3 = [
 
-    # 4. Reverse back to original line
+def autonomous():
+    global current_left, current_right
+    current_left = 0
+    current_right = 0
 
+    inertial_sensor.reset_heading()
 
-    # Optional stop
-    ("intake_stop"),
-]
+    # ---- PATHING (smooth only) ----
+    run_smooth_path([
+        ("drive", 30),
+        ("turn", -90),
+        ("drive", 1),
+    ])
 
-    run_path(path)
-    piston2.set(True)
-    wait(1, SECONDS)
-    run_path(path_2)
+    # ---- SCORE SEQUENCE ----
+    piston2.set(True)      # scraper down
+    piston4.set(True)      # goal hood
+    wait(0.3, SECONDS)
+
     intake.spin(REVERSE, 100, PERCENT)
 
-    drivetrain.drive(FORWARD, 65, PERCENT)
-    wait(1.5, SECONDS)
-    drivetrain.stop()
-    drivetrain.drive(REVERSE, 25, PERCENT)
-    wait(2, SECONDS)
-    piston4.set(True)
-    intake.spin(REVERSE, 100, PERCENT)
-    
+    # Smooth push into goal
+    drive_smooth(6)
 
+    # Gentle wiggle while intaking
+    for _ in range(2):
+        ramp_to_speed(50, 40)
+        wait(200, MSEC)
+        ramp_to_speed(40, 50)
+        wait(200, MSEC)
+
+    ramp_to_speed(0, 0)
+    wait(300, MSEC)
+
+    # Back up cleanly
+    drive_smooth(-6)
+
+    # Release balls
+    intake.spin(FORWARD, 80, PERCENT)
+    wait(0.8, SECONDS)
+
+    intake.stop(COAST)
+    piston4.set(False)
 
     
     test_path = [
