@@ -397,7 +397,46 @@ def autonomous():
     global current_left, current_right
     current_left = 0
     current_right = 0
-    # Paste your jerry.io path below (list of tuples: (x, y))
+
+    inertial_sensor.reset_heading()
+
+    # ---- PATHING (smooth only) ----
+    run_smooth_path([
+        ("drive", 30),
+        ("turn", -90),
+        ("drive", 1),
+    ])
+
+    # ---- SCORE SEQUENCE ----
+    piston2.set(True)      # scraper down
+    piston4.set(True)      # goal hood
+    wait(0.3, SECONDS)
+
+    intake.spin(REVERSE, 100, PERCENT)
+
+    # Smooth push into goal
+    drive_smooth(6)
+
+    # Gentle wiggle while intaking
+    for _ in range(2):
+        ramp_to_speed(50, 40)
+        wait(200, MSEC)
+        ramp_to_speed(40, 50)
+        wait(200, MSEC)
+
+    ramp_to_speed(0, 0)
+    wait(300, MSEC)
+
+    # Back up cleanly
+    drive_smooth(-6)
+
+    # Release balls
+    intake.spin(FORWARD, 80, PERCENT)
+    wait(0.8, SECONDS)
+
+    intake.stop(COAST)
+    piston4.set(False)
+
     
     test_path = [
     (-49.084, -14.683),
