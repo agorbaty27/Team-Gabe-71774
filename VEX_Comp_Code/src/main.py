@@ -811,7 +811,7 @@ def draw_selection_screen():
         # Highlight selected button
         if routine["func"] == selected_auton:
             brain.screen.set_pen_color(Color.GREEN)
-            brain.screen.draw_rectangle(10, y_pos, 460, button_height, Color.DARK_GREEN)
+            brain.screen.draw_rectangle(10, y_pos, 460, button_height, Color.RED)
         else:
             brain.screen.set_pen_color(Color.WHITE)
             brain.screen.draw_rectangle(10, y_pos, 460, button_height)
