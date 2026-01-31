@@ -1,0 +1,18 @@
+{
+	"extension": {
+		"version": "0.8.2026011200",
+		"json": 2
+	},
+	"project": {
+		"name": "All_auton_testing",
+		"description": "put anything you wanna test here",
+		"creationDate": "1/31/2026, 11:16:57 AM",
+		"platform": "V5",
+		"language": "python",
+		"slot": 1,
+		"sdkVersion": "V5_1_0_1_25",
+		"python": {
+			"main": "src/main.py"
+		}
+	}
+}
