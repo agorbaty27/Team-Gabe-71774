@@ -3,7 +3,6 @@ from vex import *
 import urandom
 import math
 
-# Brain should be defined by default
 brain=Brain()
 
 # Robot configuration code
@@ -387,54 +386,18 @@ def run_smooth_path(commands):
             turn_smooth(cmd[1])
         wait(40, MSEC)
 
-def autonomous():
-    global current_left, current_right
-    current_left = 0
-    current_right = 0
-    # Paste your jerry.io path below (list of tuples: (x, y))
-
-    path = [
- # 1. Initial long forward path (from -39 to -118)
-    ("drive", 30),
-       
-
-    # 2. 90° right turn
-    ("turn", -90),
-
-
-] 
-
     path_2 = [
     # 3. Short forward push
     ("drive", 1),
 
 ]
 
-    path_3 = [
 
-    # 4. Reverse back to original line
-
-
-    # Optional stop
-    ("intake_stop"),
-]
-
-    run_path(path)
-    piston2.set(True)
-    wait(1, SECONDS)
-    run_path(path_2)
-    intake.spin(REVERSE, 100, PERCENT)
-
-    drivetrain.drive(FORWARD, 65, PERCENT)
-    wait(1.5, SECONDS)
-    drivetrain.stop()
-    drivetrain.drive(REVERSE, 25, PERCENT)
-    wait(2, SECONDS)
-    piston4.set(True)
-    intake.spin(REVERSE, 100, PERCENT)
-    
-
-
+def autonomous():
+    global current_left, current_right
+    current_left = 0
+    current_right = 0
+    # Paste your jerry.io path below (list of tuples: (x, y))
     
     test_path = [
     (-49.084, -14.683),
