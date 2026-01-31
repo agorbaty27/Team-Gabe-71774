@@ -1,6 +1,6 @@
 #region VEXcode Generated Robot Configuration
 from vex import *
-import urandom
+import urandom #type: ignore
 import math
 
 brain=Brain()
@@ -16,7 +16,7 @@ wait(30, MSEC)
 def initializeRandomSeed():
     wait(100, MSEC)
     random = brain.battery.voltage(MV) + brain.battery.current(CurrentUnits.AMP) * 100 + brain.timer.system_high_res()
-    urandom.seed(int(random))
+    urandom.seed(int(random)) 
       
 # Set random seed 
 initializeRandomSeed()

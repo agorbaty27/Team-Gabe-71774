@@ -1,6 +1,6 @@
 #region VEXcode Generated Robot Configuration
 from vex import *
-import urandom
+import urandom #type: ignore
 import math
 
 # Brain should be defined by default
@@ -241,7 +241,7 @@ def user_control():
         driving()
         intaking()
         piston()
-        brain.print("yay")
+
 
        
         wait(20, MSEC)
