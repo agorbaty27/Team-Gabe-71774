@@ -236,164 +236,7 @@ def convert_jerry_path(path):
 
     return commands
 
-
-SMOOTHING = 0.12
-DEADBAND = 5
-
-current_left_speed = 0.0
-current_right_speed = 0.0
-
-
-def apply_deadband(value):
-    return 0 if abs(value) < DEADBAND else value
-
-
-def driving():
-    global current_left_speed, current_right_speed
-
-    forward = apply_deadband(controller.axis3.position())
-    turn = apply_deadband(controller.axis1.position()) * 0.5  
-
-    if forward == 0 and turn == 0:
-        current_left_speed = 0
-        current_right_speed = 0
-        left_drive.stop(COAST)
-        right_drive.stop(COAST)
-        return
-
-
-    target_left = forward + turn
-    target_right = forward - turn
-
-    target_left = max(-100, min(100, target_left))
-    target_right = max(-100, min(100, target_right))
-
-
-    current_left_speed += (target_left - current_left_speed) * SMOOTHING
-    current_right_speed += (target_right - current_right_speed) * SMOOTHING
-
-
-    left_drive.spin(FORWARD if current_left_speed >= 0 else REVERSE, abs(current_left_speed), PERCENT)
-    right_drive.spin(FORWARD if current_right_speed >= 0 else REVERSE, abs(current_right_speed), PERCENT)
-
-    wait(10, MSEC)
-
-
-def intaking():
-    # Main intake (R1/R2)
-    if controller.buttonR1.pressing():
-        intake.spin(FORWARD, 100, PERCENT)
-    elif controller.buttonR2.pressing():
-        intake.spin(REVERSE, 100, PERCENT)
-    
-    elif controller.buttonL2.pressing():
-        intake.spin(REVERSE, 100, PERCENT)
-        piston4.set(True)
-    
-    elif controller.buttonL1.pressing():
-        intake.spin(FORWARD, 100, PERCENT)
-
-    else:
-        intake.stop(COAST)
-        piston4.set(False)
-
-
-    wait(10, MSEC)
-
-    
-def piston():
-    if controller.buttonX.pressing():
-        piston1.set(True)
-
-    if controller.buttonB.pressing():
-        piston1.set(False)
-
-    if controller.buttonUp.pressing():
-        piston2.set(False)
-
-    if controller.buttonDown.pressing():
-        piston2.set(True)
-
-    if controller.buttonY.pressing():
-        piston3.set(False)
-
-    if controller.buttonA.pressing():
-        piston3.set(True)
-    wait(10, MSEC)
-
-# ===================== SMOOTH AUTON DRIVE SYSTEM ===================== #
-
-# --- Tunables ---
-MAX_ACCEL = 4          # % speed change per loop (lower = smoother)
-DRIVE_SPEED = 55       # cruise speed
-TURN_SPEED = 45
-MIN_MOVE_IN = 2.0      # ignore tiny drives
-MIN_TURN_DEG = 5.0     # ignore tiny turns
-
-# --- Smooth velocity ramp ---
-current_left = 0.0
-current_right = 0.0
-
-def ramp_to_speed(left_target, right_target):
-    global current_left, current_right
-
-    current_left += max(-MAX_ACCEL, min(MAX_ACCEL, left_target - current_left))
-    current_right += max(-MAX_ACCEL, min(MAX_ACCEL, right_target - current_right))
-
-    left_drive.spin(FORWARD if current_left >= 0 else REVERSE,
-                    abs(current_left), PERCENT)
-    right_drive.spin(FORWARD if current_right >= 0 else REVERSE,
-                     abs(current_right), PERCENT)
-
-# --- Smooth distance drive ---
-def drive_smooth(inches):
-    if abs(inches) < MIN_MOVE_IN:
-        return
-
-    direction = 1 if inches > 0 else -1
-    target_deg = (abs(inches) / WHEEL_CIRCUMFERENCE_IN) * 360
-    odom_sensor.reset_position()
-
-    while abs(odom_sensor.position(DEGREES)) < target_deg:
-        ramp_to_speed(direction * DRIVE_SPEED,
-                      direction * DRIVE_SPEED)
-        wait(20, MSEC)
-
-    left_drive.stop(COAST)
-    right_drive.stop(COAST)
-
-# --- Smooth inertial turn ---
-def turn_smooth(angle):
-    if abs(angle) < MIN_TURN_DEG:
-        return
-
-    inertial_sensor.reset_heading()
-    direction = 1 if angle > 0 else -1
-
-    while abs(inertial_sensor.rotation()) < abs(angle):
-        ramp_to_speed(direction * TURN_SPEED,
-                     -direction * TURN_SPEED)
-        wait(20, MSEC)
-
-    left_drive.stop(COAST)
-    right_drive.stop(COAST)
-
-# --- Run auton command list ---
-def run_smooth_path(commands):
-    for cmd in commands:
-        if cmd[0] == "drive":
-            drive_smooth(cmd[1])
-        elif cmd[0] == "turn":
-            turn_smooth(cmd[1])
-        wait(40, MSEC)
-
-def autonomous():
-    global current_left, current_right
-    current_left = 0
-    current_right = 0
-    # Paste your jerry.io path below (list of tuples: (x, y))
-
-    path = [
+path = [
  # 1. Initial long forward path (from -39 to -118)
     ("drive", 30),
        
@@ -404,13 +247,24 @@ def autonomous():
 
 ] 
 
-    path_2 = [
+path_5 = [
+ # 1. Initial long forward path (from -39 to -118)
+    ("drive", 30),
+       
+
+    # 2. 90° right turn
+    ("turn", 90),
+
+
+] 
+
+path_2 = [
     # 3. Short forward push
     ("drive", 1),
 
 ]
 
-    path_3 = [
+path_3 = [
 
     # 4. Reverse back to original line
 
@@ -418,6 +272,8 @@ def autonomous():
     # Optional stop
     ("intake_stop"),
 ]
+    
+def auton_left():
 
     run_path(path)
     piston2.set(True)
@@ -433,6 +289,21 @@ def autonomous():
     piston4.set(True)
     intake.spin(REVERSE, 100, PERCENT)
     
+def auton_right():
+
+    run_path(path_5)
+    piston2.set(True)
+    wait(2, SECONDS)
+    run_path(path_2)
+    intake.spin(REVERSE, 100, PERCENT)
+
+    drivetrain.drive(FORWARD, 65, PERCENT)
+    wait(1.5, SECONDS)
+    drivetrain.stop()
+    drivetrain.drive(REVERSE, 25, PERCENT)
+    wait(2, SECONDS)
+    piston4.set(True)
+    intake.spin(REVERSE, 100, PERCENT)
 
 
     
@@ -765,19 +636,239 @@ def autonomous():
 
 
 
+SMOOTHING = 0.12
+DEADBAND = 5
+
+current_left_speed = 0.0
+current_right_speed = 0.0
+
+
+def apply_deadband(value):
+    return 0 if abs(value) < DEADBAND else value
+
+
+def driving():
+    global current_left_speed, current_right_speed
+
+    forward = apply_deadband(controller.axis3.position())
+    turn = apply_deadband(controller.axis1.position()) * 0.5  
+
+    if forward == 0 and turn == 0:
+        current_left_speed = 0
+        current_right_speed = 0
+        left_drive.stop(COAST)
+        right_drive.stop(COAST)
+        return
+
+
+    target_left = forward + turn
+    target_right = forward - turn
+
+    target_left = max(-100, min(100, target_left))
+    target_right = max(-100, min(100, target_right))
+
+
+    current_left_speed += (target_left - current_left_speed) * SMOOTHING
+    current_right_speed += (target_right - current_right_speed) * SMOOTHING
+
+
+    left_drive.spin(FORWARD if current_left_speed >= 0 else REVERSE, abs(current_left_speed), PERCENT)
+    right_drive.spin(FORWARD if current_right_speed >= 0 else REVERSE, abs(current_right_speed), PERCENT)
+
+    wait(10, MSEC)
+
+
+def intaking():
+    # Main intake (R1/R2)
+    if controller.buttonR1.pressing():
+        intake.spin(FORWARD, 100, PERCENT)
+    elif controller.buttonR2.pressing():
+        intake.spin(REVERSE, 100, PERCENT)
+    
+    elif controller.buttonL2.pressing():
+        intake.spin(REVERSE, 100, PERCENT)
+        piston4.set(True)
+    
+    elif controller.buttonL1.pressing():
+        intake.spin(FORWARD, 100, PERCENT)
+
+    else:
+        intake.stop(COAST)
+        piston4.set(False)
+
+
+    wait(10, MSEC)
+
+    
+def piston():
+    if controller.buttonX.pressing():
+        piston1.set(True)
+
+    if controller.buttonB.pressing():
+        piston1.set(False)
+
+    if controller.buttonUp.pressing():
+        piston2.set(False)
+
+    if controller.buttonDown.pressing():
+        piston2.set(True)
+
+    if controller.buttonY.pressing():
+        piston3.set(False)
+
+    if controller.buttonA.pressing():
+        piston3.set(True)
+    wait(10, MSEC)
+
+# ===================== SMOOTH AUTON DRIVE SYSTEM ===================== #
+
+# --- Tunables ---
+MAX_ACCEL = 4          # % speed change per loop (lower = smoother)
+DRIVE_SPEED = 55       # cruise speed
+TURN_SPEED = 45
+MIN_MOVE_IN = 2.0      # ignore tiny drives
+MIN_TURN_DEG = 5.0     # ignore tiny turns
+
+# --- Smooth velocity ramp ---
+current_left = 0.0
+current_right = 0.0
+
+def ramp_to_speed(left_target, right_target):
+    global current_left, current_right
+
+    current_left += max(-MAX_ACCEL, min(MAX_ACCEL, left_target - current_left))
+    current_right += max(-MAX_ACCEL, min(MAX_ACCEL, right_target - current_right))
+
+    left_drive.spin(FORWARD if current_left >= 0 else REVERSE,
+                    abs(current_left), PERCENT)
+    right_drive.spin(FORWARD if current_right >= 0 else REVERSE,
+                     abs(current_right), PERCENT)
+
+# --- Smooth distance drive ---
+def drive_smooth(inches):
+    if abs(inches) < MIN_MOVE_IN:
+        return
+
+    direction = 1 if inches > 0 else -1
+    target_deg = (abs(inches) / WHEEL_CIRCUMFERENCE_IN) * 360
+    odom_sensor.reset_position()
+
+    while abs(odom_sensor.position(DEGREES)) < target_deg:
+        ramp_to_speed(direction * DRIVE_SPEED,
+                      direction * DRIVE_SPEED)
+        wait(20, MSEC)
+
+    left_drive.stop(COAST)
+    right_drive.stop(COAST)
+
+# --- Smooth inertial turn ---
+def turn_smooth(angle):
+    if abs(angle) < MIN_TURN_DEG:
+        return
+
+    inertial_sensor.reset_heading()
+    direction = 1 if angle > 0 else -1
+
+    while abs(inertial_sensor.rotation()) < abs(angle):
+        ramp_to_speed(direction * TURN_SPEED,
+                     -direction * TURN_SPEED)
+        wait(20, MSEC)
+
+    left_drive.stop(COAST)
+    right_drive.stop(COAST)
+
+# --- Run auton command list ---
+def run_smooth_path(commands):
+    for cmd in commands:
+        if cmd[0] == "drive":
+            drive_smooth(cmd[1])
+        elif cmd[0] == "turn":
+            turn_smooth(cmd[1])
+        wait(40, MSEC)
+
+# ===================== AUTON SELECTOR ===================== #
+
+selected_auton = None
+
+# List of autonomous routines
+# Each routine is a dictionary with a name and the function to call
+auton_routines = [
+    {"name": "Left", "func": auton_left},
+    {"name": "Right", "func": auton_right},
+    {"name": "None", "func": None}
+]
+
+def draw_selection_screen():
+    """Draws the autonomous selection buttons on the screen."""
+    brain.screen.clear_screen()
+    brain.screen.set_font(FontType.MONO30)
+    button_height = 60
+    button_padding = 20
+    
+    for i, routine in enumerate(auton_routines):
+        y_pos = i * (button_height + button_padding) + 20
+        
+        # Highlight selected button
+        if routine["func"] == selected_auton:
+            brain.screen.set_pen_color(Color.GREEN)
+            brain.screen.draw_rectangle(10, y_pos, 460, button_height, Color.DARK_GREEN)
+        else:
+            brain.screen.set_pen_color(Color.WHITE)
+            brain.screen.draw_rectangle(10, y_pos, 460, button_height)
+            
+        brain.screen.print_at(x=30, y=y_pos + 40, text=routine["name"])
+
+def handle_screen_press():
+    """Checks for a screen press and updates the selected autonomous."""
+    global selected_auton
+    if not brain.screen.pressing():
+        return
+
+    x = brain.screen.x_position()
+    y = brain.screen.y_position()
+    
+    button_height = 60
+    button_padding = 20
+
+    for i, routine in enumerate(auton_routines):
+        y_pos = i * (button_height + button_padding) + 20
+        if 10 < x < 470 and y_pos < y < y_pos + button_height:
+            selected_auton = routine["func"]
+            draw_selection_screen() # Redraw to show selection
+            break
+    
+    # Wait for screen release to prevent multiple selections
+    while brain.screen.pressing():
+        wait(20, MSEC)
+
+def autonomous():
+    global current_left, current_right
+    current_left = 0
+    current_right = 0
+
+    if selected_auton:
+        brain.screen.clear_screen()
+        brain.screen.print("Running Auton...")
+        selected_auton()
+        brain.screen.print("Auton Complete")
+    else:
+        brain.screen.print("No Auton Selected")
+
 def user_control():
     brain.screen.clear_screen()
-    brain.screen.print("driver control")
+    brain.screen.print("Driver Control")
 
     while True:
         driving()
         intaking()
         piston()
-
-
-       
         wait(20, MSEC)
 
+# --- Competition Setup ---
 comp = Competition(user_control, autonomous)
+# Pre-Autonomous: Run the selection screen
+draw_selection_screen()
+while not comp.is_autonomous() and not comp.is_driver_control():
+    handle_screen_press()
+    wait(50, MSEC)
 
-brain.screen.clear_screen()
