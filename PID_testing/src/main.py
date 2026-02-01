@@ -107,6 +107,64 @@ def drive_inches_odom(inches, speed=40):
     right_drive.stop(BRAKE)
     wait(10,MSEC)
 
+def drive_pid(target_inches, kP=0.4, kI=0.0, kD=0.0):
+    # Convert inches to degrees for the sensor
+    corrected_inches = target_inches * ODOMETRY_CORRECTION
+    target_degrees = (corrected_inches / WHEEL_CIRCUMFERENCE_IN) * 360
+    
+    odom_sensor.reset_position()
+    
+    error = 0
+    prev_error = 0
+    integral = 0
+    derivative = 0
+    
+    # Settle time variables
+    at_target_time = 0
+    
+    while True:
+        current_pos = odom_sensor.position(DEGREES)
+        
+        # 1. Proportional: How far are we?
+        error = target_degrees - current_pos
+        
+        # 2. Integral: Have we been stuck for a while?
+        # Only start integrating when close to the target to avoid "Integral Windup"
+        if abs(error) < 50:
+            integral += error
+        else:
+            integral = 0
+            
+        # 3. Derivative: How fast are we approaching? (Prevents overshoot)
+        derivative = error - prev_error
+        prev_error = error
+        
+        # Calculate Power
+        power = (error * kP) + (integral * kI) + (derivative * kD)
+        
+        # Cap power at 100%
+        if power > 100: power = 100
+        if power < -100: power = -100
+        
+        left_drive.spin(FORWARD, power, PERCENT)
+        right_drive.spin(FORWARD, power, PERCENT)
+        
+        # Exit condition: If error is small enough for 100ms
+        if abs(error) < 2: # 2 degrees tolerance
+            at_target_time += 10
+        else:
+            at_target_time = 0
+            
+        if at_target_time > 100: # Stayed at target for 0.1 seconds
+            break
+            
+        wait(10, MSEC)
+        
+    left_drive.stop(BRAKE)
+    right_drive.stop(BRAKE)
+    wait(10,MSEC)
+
+
 
 def turn_degrees_inertial(angle, speed=40):
     """Turn the robot using the inertial sensor for accurate heading."""
@@ -120,6 +178,65 @@ def turn_degrees_inertial(angle, speed=40):
         drivetrain.turn_for(LEFT, -corrected_angle, DEGREES)
     wait(10,MSEC)
 
+def turn_pid(target_angle, kP=0.4, kI=0.0, kD=0.0):
+    # Apply your tuning correction if needed
+    corrected_target = target_angle * TURNING_CORRECTION
+    
+    # Reset heading to 0 so we turn relative to current position
+    inertial_sensor.set_heading(0, DEGREES)
+    
+    error = 0
+    prev_error = 0
+    integral = 0
+    derivative = 0
+    at_target_time = 0
+
+    while True:
+        # Get current heading (0 to 360)
+        current_heading = inertial_sensor.heading(DEGREES)
+        
+        # Standardize heading to -180 to 180 range
+        if current_heading > 180:
+            current_heading -= 360
+            
+        # 1. Calculate Error
+        error = corrected_target - current_heading
+        
+        # 2. Integral (Prevents getting stuck just before target)
+        if abs(error) < 15: # Only active when close
+            integral += error
+        else:
+            integral = 0
+            
+        # 3. Derivative (Slows down as it approaches to prevent overshoot)
+        derivative = error - prev_error
+        prev_error = error
+        
+        # Calculate Motor Output
+        power = (error * kP) + (integral * kI) + (derivative * kD)
+        
+        # Limit power for safety/traction
+        power = max(-80, min(80, power))
+        
+        # Apply to drivetrain (Spin in opposite directions)
+        left_drive.spin(FORWARD, power, PERCENT)
+        right_drive.spin(REVERSE, power, PERCENT)
+        
+        # Settle Logic: Error must be within 1.5 degrees for 100ms
+        if abs(error) < 1.5:
+            at_target_time += 10
+        else:
+            at_target_time = 0
+            
+        if at_target_time > 100:
+            break
+            
+        wait(10, MSEC)
+        
+    left_drive.stop(BRAKE)
+    right_drive.stop(BRAKE)
+    wait(10,MSEC)
+
 
 def run_path(steps):
 
@@ -127,10 +244,10 @@ def run_path(steps):
         action = step[0]
 
         if action == "drive":
-            drive_inches_odom(step[1])
+            drive_pid(step[1])
 
         elif action == "turn":
-            turn_degrees_inertial(step[1])
+            turn_pid(step[1])
 
         elif action == "intake":
             power = step[1]
