@@ -76,8 +76,8 @@ WHEEL_CIRCUMFERENCE_IN = math.pi * WHEEL_DIAMETER_IN
 TICKS_PER_REV = 360.0  
 
 # Tuning multipliers - adjust these to calibrate odometry and turning
-ODOMETRY_CORRECTION = 0.87  # Multiply drive distance by this value
-TURNING_CORRECTION = 0.76   # Multiply turn angle by this value
+ODOMETRY_CORRECTION = 1  # Multiply drive distance by this value
+TURNING_CORRECTION = 1   # Multiply turn angle by this value
 
 inertial_sensor = Inertial(Ports.PORT15)
 inertial_sensor.calibrate()
@@ -107,8 +107,7 @@ def drive_inches_odom(inches, speed=40):
     right_drive.stop(BRAKE)
     wait(10,MSEC)
 
-def drive_pid(target_inches, kP=0.4, kI=0.0, kD=0.0):
-    # Convert inches to degrees for the sensor
+def drive_pid(target_inches, kP=0.1, kI=0.1, kD=0.02):
     corrected_inches = target_inches * ODOMETRY_CORRECTION
     target_degrees = (corrected_inches / WHEEL_CIRCUMFERENCE_IN) * 360
     
@@ -119,50 +118,54 @@ def drive_pid(target_inches, kP=0.4, kI=0.0, kD=0.0):
     integral = 0
     derivative = 0
     
-    # Settle time variables
     at_target_time = 0
-    
+
+    # 🔹 Acceleration control
+    current_power = 0
+    MAX_ACCEL = 2   # percent per 10ms loop (tune this)
+
     while True:
         current_pos = odom_sensor.position(DEGREES)
-        
-        # 1. Proportional: How far are we?
         error = target_degrees - current_pos
-        
-        # 2. Integral: Have we been stuck for a while?
-        # Only start integrating when close to the target to avoid "Integral Windup"
+
         if abs(error) < 50:
             integral += error
         else:
             integral = 0
             
-        # 3. Derivative: How fast are we approaching? (Prevents overshoot)
         derivative = error - prev_error
         prev_error = error
         
-        # Calculate Power
-        power = (error * kP) + (integral * kI) + (derivative * kD)
-        
-        # Cap power at 100%
-        if power > 100: power = 100
-        if power < -100: power = -100
-        
-        left_drive.spin(FORWARD, power, PERCENT)
-        right_drive.spin(FORWARD, power, PERCENT)
-        
-        # Exit condition: If error is small enough for 100ms
-        if abs(error) < 2: # 2 degrees tolerance
+        target_power = (error * kP) + (integral * kI) + (derivative * kD)
+
+        # Cap target power
+        if target_power > 60: target_power = 60
+        if target_power < -60: target_power = -60
+
+        # 🔹 Slew rate limiting (smooth acceleration)
+        if target_power > current_power + MAX_ACCEL:
+            current_power += MAX_ACCEL
+        elif target_power < current_power - MAX_ACCEL:
+            current_power -= MAX_ACCEL
+        else:
+            current_power = target_power
+
+        left_drive.spin(FORWARD, current_power, PERCENT)
+        right_drive.spin(FORWARD, current_power, PERCENT)
+
+        if abs(error) < 2:
             at_target_time += 10
         else:
             at_target_time = 0
             
-        if at_target_time > 100: # Stayed at target for 0.1 seconds
+        if at_target_time > 100:
             break
             
         wait(10, MSEC)
         
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
-    wait(10,MSEC)
+    wait(10, MSEC)
 
 
 
@@ -178,64 +181,49 @@ def turn_degrees_inertial(angle, speed=40):
         drivetrain.turn_for(LEFT, -corrected_angle, DEGREES)
     wait(10,MSEC)
 
-def turn_pid(target_angle, kP=0.4, kI=0.0, kD=0.0):
-    # Apply your tuning correction if needed
-    corrected_target = target_angle * TURNING_CORRECTION
-    
-    # Reset heading to 0 so we turn relative to current position
-    inertial_sensor.set_heading(0, DEGREES)
-    
+def turn_pid(relative_angle, kP=0.4, kI=0.00, kD=0.01):
+    # Convert relative request → absolute heading
+    start_heading = inertial_sensor.heading(DEGREES)
+    target = (start_heading + (relative_angle * TURNING_CORRECTION)) % 360
+
     error = 0
     prev_error = 0
     integral = 0
-    derivative = 0
     at_target_time = 0
 
     while True:
-        # Get current heading (0 to 360)
-        current_heading = inertial_sensor.heading(DEGREES)
-        
-        # Standardize heading to -180 to 180 range
-        if current_heading > 180:
-            current_heading -= 360
-            
-        # 1. Calculate Error
-        error = corrected_target - current_heading
-        
-        # 2. Integral (Prevents getting stuck just before target)
-        if abs(error) < 15: # Only active when close
+        current = inertial_sensor.heading(DEGREES)
+
+        # Shortest-path error (-180 → 180)
+        error = ((target - current + 180) % 360) - 180
+
+        if abs(error) < 15:
             integral += error
         else:
             integral = 0
-            
-        # 3. Derivative (Slows down as it approaches to prevent overshoot)
+
         derivative = error - prev_error
         prev_error = error
-        
-        # Calculate Motor Output
+
         power = (error * kP) + (integral * kI) + (derivative * kD)
-        
-        # Limit power for safety/traction
         power = max(-80, min(80, power))
-        
-        # Apply to drivetrain (Spin in opposite directions)
+
         left_drive.spin(FORWARD, power, PERCENT)
         right_drive.spin(REVERSE, power, PERCENT)
-        
-        # Settle Logic: Error must be within 1.5 degrees for 100ms
+
         if abs(error) < 1.5:
             at_target_time += 10
         else:
             at_target_time = 0
-            
+
         if at_target_time > 100:
             break
-            
+
         wait(10, MSEC)
-        
+
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
-    wait(10,MSEC)
+    wait(10, MSEC)
 
 
 def run_path(steps):
@@ -360,14 +348,33 @@ def autonomous():
     current_left = 0
     current_right = 0
 
+    path_5 = [
+        ("drive", 20),
+ ]
+
+
+    
+
+
     path = [
-        ("drive", 30),
-        ("turn", -90),
+    
+        ("drive", 31.5),
+        ("turn", -91),
         ] 
     
+    path_5 = [
+    
+        ("drive", 8),
+        ] 
+    
+    path_6 = [
+    
+        ("drive", -23),
+        ] 
+
     path_2 = [
-        ("drive", -10),
-        ("turn", -90),
+        ("drive", 10),
+        ("turn", 90),
         ("drive", 10),
         ("turn", 90),
         ("drive", 82),
@@ -393,15 +400,13 @@ def autonomous():
         piston2.set(True)
         wait(1, SECONDS)
         intake.spin(REVERSE, 100, PERCENT)
-        drivetrain.drive(FORWARD, 75, PERCENT)
+        run_path(path_5)
         wait(1.5, SECONDS)
-        drivetrain.stop()
-        drivetrain.drive(REVERSE, 70, PERCENT)
+        run_path(path_6)
         wait(1.5, SECONDS)
         piston4.set(True)
         intake.spin(REVERSE, 100, PERCENT)
         wait(1, SECONDS)
-        drivetrain.stop()
         wait(0.75, SECONDS)
         intake.stop(COAST)
         piston2.set(False)

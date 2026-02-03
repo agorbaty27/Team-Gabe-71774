@@ -392,143 +392,90 @@ def piston():
         piston3.set(True)
     wait(10, MSEC)
 
-# ===================== SMOOTH AUTON DRIVE SYSTEM ===================== #
+auton_selected = 0
+# 0 = none
+# 1 = left
+# 2 = right
 
-# --- Tunables ---
-MAX_ACCEL = 4          # % speed change per loop (lower = smoother)
-DRIVE_SPEED = 55       # cruise speed
-TURN_SPEED = 45
-MIN_MOVE_IN = 2.0      # ignore tiny drives
-MIN_TURN_DEG = 5.0     # ignore tiny turns
-
-# --- Smooth velocity ramp ---
-current_left = 0.0
-current_right = 0.0
-
-def ramp_to_speed(left_target, right_target):
-    global current_left, current_right
-
-    current_left += max(-MAX_ACCEL, min(MAX_ACCEL, left_target - current_left))
-    current_right += max(-MAX_ACCEL, min(MAX_ACCEL, right_target - current_right))
-
-    left_drive.spin(FORWARD if current_left >= 0 else REVERSE,
-                    abs(current_left), PERCENT)
-    right_drive.spin(FORWARD if current_right >= 0 else REVERSE,
-                     abs(current_right), PERCENT)
-
-# --- Smooth distance drive ---
-def drive_smooth(inches):
-    if abs(inches) < MIN_MOVE_IN:
-        return
-
-    direction = 1 if inches > 0 else -1
-    target_deg = (abs(inches) / WHEEL_CIRCUMFERENCE_IN) * 360
-    odom_sensor.reset_position()
-
-    while abs(odom_sensor.position(DEGREES)) < target_deg:
-        ramp_to_speed(direction * DRIVE_SPEED,
-                      direction * DRIVE_SPEED)
-        wait(20, MSEC)
-
-    left_drive.stop(COAST)
-    right_drive.stop(COAST)
-
-# --- Smooth inertial turn ---
-def turn_smooth(angle):
-    if abs(angle) < MIN_TURN_DEG:
-        return
-
-    inertial_sensor.reset_heading()
-    direction = 1 if angle > 0 else -1
-
-    while abs(inertial_sensor.rotation()) < abs(angle):
-        ramp_to_speed(direction * TURN_SPEED,
-                     -direction * TURN_SPEED)
-        wait(20, MSEC)
-
-    left_drive.stop(COAST)
-    right_drive.stop(COAST)
-
-# --- Run auton command list ---
-def run_smooth_path(commands):
-    for cmd in commands:
-        if cmd[0] == "drive":
-            drive_smooth(cmd[1])
-        elif cmd[0] == "turn":
-            turn_smooth(cmd[1])
-        wait(40, MSEC)
-
-# ===================== AUTON SELECTOR ===================== #
-
-# --- Configuration ---
-CONFIG = {
-    "btn_h": 60,
-    "btn_p": 20,
-    "start_y": 20,
-    "width": 460
-}
-
-auton_routines = [
-    {"name": "Left", "func": auton_left},
-    {"name": "Right", "func": auton_right},
-    {"name": "None", "func": auton_none}
-]
-
-selected_idx = 0  # Track by index instead of function pointer for easier UI math
-
-def draw_selection_screen():
+def draw_auton_selector():
     brain.screen.clear_screen()
     brain.screen.set_font(FontType.MONO30)
-    
-    for i, routine in enumerate(auton_routines):
-        y = i * (CONFIG["btn_h"] + CONFIG["btn_p"]) + CONFIG["start_y"]
-        
-        # UI Toggle: Green for selected, White for others
-        color = Color.GREEN if i == selected_idx else Color.WHITE
-        brain.screen.set_pen_color(color)
-        brain.screen.draw_rectangle(10, y, CONFIG["width"], CONFIG["btn_h"])
-        brain.screen.print_at(routine["name"], x=30, y=y + 40)
 
-def handle_screen_press():
-    global selected_idx
-    if not brain.screen.pressing(): return
+    # LEFT
+    brain.screen.set_fill_color(Color.RED)
+    brain.screen.draw_rectangle(20, 40, 180, 80)
+    brain.screen.set_pen_color(Color.WHITE)
+    brain.screen.print_at(60, 90, "LEFT")
 
-    y_press = brain.screen.y_position()
-    
-    # Calculate which index was clicked based on Y position
-    for i in range(len(auton_routines)):
-        y_top = i * (CONFIG["btn_h"] + CONFIG["btn_p"]) + CONFIG["start_y"]
-        if y_top < y_press < y_top + CONFIG["btn_h"]:
-            if selected_idx != i: # Only redraw if selection changed
-                selected_idx = i
-                draw_selection_screen()
-            break
-    
-    while brain.screen.pressing(): wait(20, MSEC)
+    # RIGHT
+    brain.screen.set_fill_color(Color.BLUE)
+    brain.screen.draw_rectangle(220, 40, 180, 80)
+    brain.screen.print_at(250, 90, "RIGHT")
 
-def autonomous():
+    # NONE
+    brain.screen.set_fill_color(Color.GREEN)
+    brain.screen.draw_rectangle(120, 150, 180, 80)
+    brain.screen.print_at(155, 200, "NONE")
+
+def check_auton_touch():
+    global auton_selected
+
+    if not brain.screen.pressing():
+        return
+
+    x = brain.screen.x_position()
+    y = brain.screen.y_position()
+
+    if 20 < x < 200 and 40 < y < 120:
+        auton_selected = 1
+    elif 220 < x < 400 and 40 < y < 120:
+        auton_selected = 2
+    elif 120 < x < 300 and 150 < y < 230:
+        auton_selected = 0
+
     brain.screen.clear_screen()
-    # Get the function from the selected index
-    routine = auton_routines[selected_idx]
+    brain.screen.print_at(20, 40, "Auton Selected:")
+
+    if auton_selected == 1:
+        brain.screen.print_at(20, 80, "LEFT")
+    elif auton_selected == 2:
+        brain.screen.print_at(20, 80, "RIGHT")
+    else:
+        brain.screen.print_at(20, 80, "NONE")
+
+    wait(300, MSEC)  # debounce
+
+def pre_auton():
+    draw_auton_selector()
+    while not comp.is_enabled():
+        check_auton_touch()
+        wait(20, MSEC)
+
+
     
-    brain.screen.print(f"Running: {routine['name']}")
-    routine["func"]()
+def autonomous():
+    if auton_selected == 1:
+        auton_left()
+    elif auton_selected == 2:
+        auton_right()
+    else:
+        auton_none()
 
 def user_control():
     brain.screen.clear_screen()
-    brain.screen.print("Driver Control")
+    brain.screen.print("driver control")
 
     while True:
         driving()
         intaking()
         piston()
+
+
+       
         wait(20, MSEC)
 
-# --- Competition Setup ---
+pre_auton()
 comp = Competition(user_control, autonomous)
-# Pre-Autonomous: Run the selection screen
-draw_selection_screen()
-while not comp.is_autonomous() and not comp.is_driver_control():
-    handle_screen_press()
-    wait(50, MSEC)
 
+
+brain.screen.clear_screen()
