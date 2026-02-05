@@ -107,10 +107,13 @@ def drive_inches_odom(inches, speed=40):
     right_drive.stop(BRAKE)
     wait(10,MSEC)
 
-def drive_pid(target_inches, kP=0.1, kI=0.1, kD=0.02):
+def drive_pid(target_inches, kP=0.05, kI=0.0, kD=0.04):
     corrected_inches = target_inches * ODOMETRY_CORRECTION
     target_degrees = (corrected_inches / WHEEL_CIRCUMFERENCE_IN) * 360
     
+    # Convert the exit threshold from inches to degrees
+    EXIT_THRESHOLD_INCHES = 0.1
+    error_threshold_degrees = (EXIT_THRESHOLD_INCHES / WHEEL_CIRCUMFERENCE_IN) * 360
     odom_sensor.reset_position()
     
     error = 0
@@ -118,8 +121,6 @@ def drive_pid(target_inches, kP=0.1, kI=0.1, kD=0.02):
     integral = 0
     derivative = 0
     
-    at_target_time = 0
-
     # 🔹 Acceleration control
     current_power = 0
     MAX_ACCEL = 2   # percent per 10ms loop (tune this)
@@ -142,6 +143,8 @@ def drive_pid(target_inches, kP=0.1, kI=0.1, kD=0.02):
         if target_power > 60: target_power = 60
         if target_power < -60: target_power = -60
 
+        if abs(target_power) < 2.5: target_power = 2.5 if target_power > 0 else -2.5
+
         # 🔹 Slew rate limiting (smooth acceleration)
         if target_power > current_power + MAX_ACCEL:
             current_power += MAX_ACCEL
@@ -153,14 +156,9 @@ def drive_pid(target_inches, kP=0.1, kI=0.1, kD=0.02):
         left_drive.spin(FORWARD, current_power, PERCENT)
         right_drive.spin(FORWARD, current_power, PERCENT)
 
-        if abs(error) < 2:
-            at_target_time += 10
-        else:
-            at_target_time = 0
-            
-        if at_target_time > 100:
+        # Exit if the robot is within the target threshold
+        if abs(error) < error_threshold_degrees:
             break
-            
         wait(10, MSEC)
         
     left_drive.stop(BRAKE)
@@ -259,25 +257,19 @@ def run_path(steps):
         wait(50, MSEC)
 
 SMOOTHING = 0.12
-DEADBAND = 5
 
 current_left_speed = 0.0
 current_right_speed = 0.0
 
 
-def apply_deadband(value):
-    return 0 if abs(value) < DEADBAND else value
-
-
 def driving():
     global current_left_speed, current_right_speed
 
-    forward = apply_deadband(controller.axis3.position())
-    turn = apply_deadband(controller.axis1.position()) * 0.5  
+    forward = controller.axis3.position()
+    turn = controller.axis1.position() * 0.5
 
     if forward == 0 and turn == 0:
-        current_left_speed = 0
-        current_right_speed = 0
+        current_left_speed, current_right_speed = 0, 0
         left_drive.stop(COAST)
         right_drive.stop(COAST)
         return
@@ -359,12 +351,12 @@ def autonomous():
     path = [
     
         ("drive", 31.5),
-        ("turn", -91),
+        ("turn", -90),
         ] 
     
     path_5 = [
     
-        ("drive", 8),
+        ("drive", 9),
         ] 
     
     path_6 = [
@@ -400,10 +392,13 @@ def autonomous():
         piston2.set(True)
         wait(1, SECONDS)
         intake.spin(REVERSE, 100, PERCENT)
-        run_path(path_5)
+        left_drive.spin(FORWARD, 60, PERCENT)
+        right_drive.spin(FORWARD , 60, PERCENT)
         wait(1.5, SECONDS)
+        left_drive.stop(COAST)
+        right_drive.stop(COAST)
         run_path(path_6)
-        wait(1.5, SECONDS)
+        wait(2, SECONDS)
         piston4.set(True)
         intake.spin(REVERSE, 100, PERCENT)
         wait(1, SECONDS)
