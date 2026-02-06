@@ -33,7 +33,7 @@ def matchload_only():
 def score_only():
     left_drive.spin(REVERSE, 60, PERCENT)
     right_drive.spin(REVERSE , 60, PERCENT)
-    wait(0.75, SECONDS)
+    wait(0.65, SECONDS)
     left_drive.stop(COAST)
     right_drive.stop(COAST)
     piston4.set(True)
