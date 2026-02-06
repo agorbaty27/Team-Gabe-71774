@@ -143,8 +143,8 @@ def drive_pid(target_inches, kP=0.05, kI=0.0, kD=0.025):
         target_power = (error * kP) + (integral * kI) + (derivative * kD)
 
         # Cap target power
-        if target_power > 60: target_power = 60
-        if target_power < -60: target_power = -60
+        if target_power > 75: target_power = 75
+        if target_power < -75: target_power = -75
 
         if abs(target_power) < 2.5: target_power = 2.5 if target_power > 0 else -2.5
 
@@ -353,7 +353,7 @@ def display_info():
 
     wait(10, MSEC)
 
-Thread(display_info)
+
 
 
 def autonomous():
@@ -369,10 +369,10 @@ def autonomous():
     
 
 
-    path = [
+    path_right = [
     
-        ("drive", 31.5),
-        ("turn", -90),
+        ("drive", 33),
+        ("turn", 90),
         ] 
     
     path_5 = [
@@ -385,16 +385,14 @@ def autonomous():
         ("drive", -23),
         ] 
 
-    path_2 = [
+    path_2_right = [
         ("drive", 10),
-        ("turn", 0),
-        ("drive", 11.75),
-        ("turn", 90),
-        ("drive", 82),
         ("turn", 180),
-        ("drive", 11.75),
+        ("drive",-11.75),
         ("turn", 90),
+        ("drive", -29),
               ]
+
     path_3 = [
         ("drive", -10),
         ("turn", -90),
@@ -411,7 +409,7 @@ def autonomous():
 
     def matchload_score():
         piston2.set(True)
-        wait(1, SECONDS)
+        wait(.25, SECONDS)
         intake.spin(REVERSE, 100, PERCENT)
         left_drive.spin(FORWARD, 20, PERCENT)
         right_drive.spin(FORWARD , 20, PERCENT)
@@ -420,25 +418,19 @@ def autonomous():
         right_drive.stop(COAST)
         left_drive.spin(REVERSE, 60, PERCENT)
         right_drive.spin(REVERSE , 60, PERCENT)
-        wait(1.5, SECONDS)
+        wait(0.8, SECONDS)
         piston4.set(True)
         intake.spin(REVERSE, 100, PERCENT)
         wait(1, SECONDS)
-        wait(0.75, SECONDS)
         intake.stop(COAST)
         piston4.set(False)
         piston2.set(False)
 
-    piston3.set(True)  
-    run_path(path)
+     
+    run_path(path_right)
     matchload_score()
-    run_path(path_2)
-    matchload_score()
-    run_path(path_3)
-    matchload_score()
-    run_path(path_2)
-    matchload_score()
-    run_path(path_4)
+    run_path(path_2_right)
+    piston3.set(True) 
 
 
 
