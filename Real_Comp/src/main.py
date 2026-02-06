@@ -16,9 +16,10 @@ brain.screen.print("Inertial Ready")
 
 
 def autonomous():
-    left_auton()
+    #left_auton()
     #right_auton()
-    #skills_auton()
+    #no_auton()
+    skills_auton()
 
 
 def user_control():

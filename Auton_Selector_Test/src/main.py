@@ -4,7 +4,7 @@ from right_auton import *
 from skills_auton import *
 from no_auton import no_auton
 from driver_controls import driving, intaking, piston
-from auton_selector import autons, selected
+from auton_selector import autons, selected, draw_screen
 
 inertial_sensor = Inertial(Ports.PORT15)
 inertial_sensor.calibrate()
@@ -15,6 +15,30 @@ FIELD_ZERO = inertial_sensor.heading(DEGREES)
 
 brain.screen.clear_screen()
 brain.screen.print("Inertial Ready")
+
+draw_screen()
+
+while not confirmed:
+    if controller.buttonRight.pressing():
+        selected = (selected + 1) % len(autons)
+        draw_screen()
+        wait(200, MSEC)
+
+    if controller.buttonLeft.pressing():
+        selected = (selected - 1) % len(autons)
+        draw_screen()
+        wait(200, MSEC)
+
+    if controller.buttonA.pressing():
+        confirmed = True
+        brain.screen.clear_screen()
+        brain.screen.print("Selected:")
+        brain.screen.new_line()
+        brain.screen.print(autons[selected][0])
+        wait(500, MSEC)
+
+wait(20, MSEC)
+
 
 def autonomous():
     autons[selected][1]()

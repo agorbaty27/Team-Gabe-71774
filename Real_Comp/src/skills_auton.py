@@ -1,5 +1,6 @@
 from PID_pathing import run_path
-from auton_actions import *
+from auton_actions import matchload_score, matchload_only, score_only, matchload_score_skills
+from config import *
 
 
 path_5 = [
@@ -42,15 +43,35 @@ path_4 = [
     ("drive", 50),  #important distance
 ]
 
+path_a = [
+    ("drive", -10),
+    ("turn", 0),
+    ("drive", 11.75),
+    ("turn", 90),
+    ("drive", 96),
+    ("turn", 180),
+    ("drive", 11.75),
+    ("turn", 90),
+]   
+
+path_b = [
+    ("drive", 10),
+    ("turn", 0),
+    ("drive", 11.75),
+    ("turn", -90),
+    ("drive", 74),
+    ("turn", -160),
+    ("drive", 64),
+]   
+
 def skills_auton():
     piston3.set(True)  
     run_path(path)
-    matchload_score()
-    run_path(path_2)
-    matchload_score()
-    run_path(path_3)
-    matchload_score()
-    run_path(path_2)
-    matchload_score()
-    run_path(path_4)
+    matchload_only()
+    run_path(path_a)
+    score_only()
+    matchload_score_skills()
+    run_path(path_b)
+
+
 
