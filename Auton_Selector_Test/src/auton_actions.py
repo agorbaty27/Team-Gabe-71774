@@ -1,0 +1,22 @@
+from main import *
+from vex import *
+from config import *
+
+def matchload_score():
+    piston2.set(True)
+    wait(0.25, SECONDS)
+    intake.spin(REVERSE, 100, PERCENT)
+    left_drive.spin(FORWARD, 20, PERCENT)
+    right_drive.spin(FORWARD , 20, PERCENT)
+    wait(1.5, SECONDS)
+    left_drive.stop(COAST)
+    right_drive.stop(COAST)
+    left_drive.spin(REVERSE, 60, PERCENT)
+    right_drive.spin(REVERSE , 60, PERCENT)
+    wait(0.8, SECONDS)
+    piston4.set(True)
+    intake.spin(REVERSE, 100, PERCENT)
+    wait(1, SECONDS)
+    intake.stop(COAST)
+    piston4.set(False)
+    piston2.set(False)
