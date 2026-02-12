@@ -60,7 +60,7 @@ brain.screen.clear_screen()
 brain.screen.print("Inertial Ready")
 
 
-def drive_pid(target_inches, kP=0.055, kI=0.00, kD=0.01):
+def drive_pid(target_inches, kP=0.05, kI=0.00, kD=0.01):
     corrected_inches = target_inches * ODOMETRY_CORRECTION
     target_degrees = (corrected_inches / WHEEL_CIRCUMFERENCE_IN) * 360
 
@@ -525,7 +525,7 @@ def matchload_only():
     intake.spin(REVERSE, 100, PERCENT)
     left_drive.spin(FORWARD, 14, PERCENT)
     right_drive.spin(FORWARD , 14, PERCENT)
-    wait(1.5, SECONDS)
+    wait(1, SECONDS)
     oscillate_drive(power = 30, time_ms=200, cycles=9)
     intake.stop(COAST)
 
@@ -555,8 +555,8 @@ def matchload_score_skills():
     run_path(path_c)
     left_drive.spin(FORWARD, 15, PERCENT)
     right_drive.spin(FORWARD , 15, PERCENT)
-    wait(2.1, SECONDS)
-    oscillate_drive(power = 30, time_ms=215, cycles=8)
+    wait(1.5, SECONDS)
+    oscillate_drive(power = 30, time_ms=215, cycles=9)
     left_drive.stop(COAST)
     right_drive.stop(COAST)
     run_path(path_c)
@@ -594,7 +594,7 @@ def skills_auton():
     left_drive.spin(FORWARD, 80, PERCENT)
     right_drive.spin(FORWARD , 80, PERCENT)
     intake.spin(REVERSE, 100, PERCENT)
-    wait(0.8, SECONDS)
+    wait(1, SECONDS)
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
     piston2.set(False)
