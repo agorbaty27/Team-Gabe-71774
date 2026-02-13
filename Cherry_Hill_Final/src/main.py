@@ -598,7 +598,23 @@ def skills_auton():
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
     piston2.set(False)
-    
+
+
+def auton_left_testing():  
+    drive_pid_distance(17.5,direction= -1,)
+    run_path(path_f)
+    matchload_score()
+    run_path(path_2_left)
+    piston3.set(True) 
+
+def auton_right_testing():  
+    drive_pid_distance(17.5,direction= -1,)
+    run_path(path_d)
+    matchload_score_right()
+    intake.spin(REVERSE, 100, PERCENT)
+    run_path(path_3_right)
+    intake.spin(FORWARD, 100, PERCENT)
+    piston3.set(True) 
 
 
 
@@ -673,6 +689,6 @@ def turn_tuning_auton():
 
 
 
-comp = Competition(user_control, skills_auton)
+comp = Competition(user_control, auton_left_testing)
 
 brain.screen.clear_screen()
