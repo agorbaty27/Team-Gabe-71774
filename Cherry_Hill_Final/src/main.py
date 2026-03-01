@@ -410,8 +410,8 @@ def oscillate_drive(power=30, time_ms=120, cycles=3):
         right_drive.spin(FORWARD, power, PERCENT)
         wait(time_ms, MSEC)
 
-        left_drive.spin(REVERSE, power*0.75, PERCENT)
-        right_drive.spin(REVERSE, power*0.75, PERCENT)
+        left_drive.spin(REVERSE, power*0.9, PERCENT)
+        right_drive.spin(REVERSE, power*0.9, PERCENT)
         wait(time_ms, MSEC)
 
     left_drive.stop(COAST)
