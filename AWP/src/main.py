@@ -29,3 +29,5 @@ comp = Competition(user_control, autonomous)
 
 # actions to do when the program starts
 brain.screen.clear_screen()
+
+#yay
