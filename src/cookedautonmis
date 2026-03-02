@@ -1,0 +1,125 @@
+from vex import *
+import math
+
+brain = Brain()
+controller = Controller(PRIMARY)
+
+# ------------------ SENSORS ------------------
+inertial_sensor = Inertial(Ports.PORT15)
+distance = Distance(Ports.PORT17)
+odom_sensor = Rotation(Ports.PORT14)
+
+# ------------------ PISTONS ------------------
+piston1 = DigitalOut(brain.three_wire_port.f)
+piston2 = DigitalOut(brain.three_wire_port.e)
+piston3 = DigitalOut(brain.three_wire_port.d)
+piston4 = DigitalOut(brain.three_wire_port.b)
+
+# ------------------ DRIVE MOTORS ------------------
+left_motor_1 = Motor(Ports.PORT11, GearSetting.RATIO_6_1, True)
+left_motor_2 = Motor(Ports.PORT12, GearSetting.RATIO_6_1, True)
+left_motor_3 = Motor(Ports.PORT13, GearSetting.RATIO_6_1, True)
+
+right_motor_1 = Motor(Ports.PORT1, GearSetting.RATIO_6_1, False)
+right_motor_2 = Motor(Ports.PORT2, GearSetting.RATIO_6_1, False)
+right_motor_3 = Motor(Ports.PORT3, GearSetting.RATIO_6_1, False)
+
+left_drive = MotorGroup(left_motor_1, left_motor_2, left_motor_3)
+right_drive = MotorGroup(right_motor_1, right_motor_2, right_motor_3)
+
+drivetrain = DriveTrain(left_drive, right_drive)
+
+# ------------------ INTAKE ------------------
+intake_motor_1 = Motor(Ports.PORT20, GearSetting.RATIO_6_1, True)
+intake_motor_3 = Motor(Ports.PORT10, GearSetting.RATIO_6_1, True)
+intake = MotorGroup(intake_motor_1, intake_motor_3)
+
+# ------------------ DRIVER SMOOTHING ------------------
+SMOOTHING = 0.12
+current_left_speed = 0
+current_right_speed = 0
+
+# ------------------ DRIVER CONTROL ------------------
+def driving():
+    global current_left_speed, current_right_speed
+
+    forward = controller.axis3.position()
+    turn = controller.axis1.position() * 0.5
+
+    target_left = forward + turn
+    target_right = forward - turn
+
+    target_left = max(-100, min(100, target_left))
+    target_right = max(-100, min(100, target_right))
+
+    current_left_speed += (target_left - current_left_speed) * SMOOTHING
+    current_right_speed += (target_right - current_right_speed) * SMOOTHING
+
+    left_drive.spin(FORWARD, current_left_speed, PERCENT)
+    right_drive.spin(FORWARD, current_right_speed, PERCENT)
+
+    if abs(forward) < 2 and abs(turn) < 2:
+        current_left_speed = 0
+        current_right_speed = 0
+        left_drive.stop(COAST)
+        right_drive.stop(COAST)
+
+def intaking():
+    if controller.buttonR1.pressing():
+        intake.spin(FORWARD, 100, PERCENT)
+    elif controller.buttonR2.pressing():
+        intake.spin(REVERSE, 100, PERCENT)
+    elif controller.buttonL2.pressing():
+        intake.spin(REVERSE, 100, PERCENT)
+        piston4.set(True)
+    elif controller.buttonL1.pressing():
+        intake.spin(FORWARD, 100, PERCENT)
+    else:
+        intake.stop(COAST)
+        piston4.set(False)
+
+    wait(10, MSEC)
+
+def piston():
+    if controller.buttonX.pressing():
+        piston1.set(True)
+    if controller.buttonB.pressing():
+        piston1.set(False)
+
+    if controller.buttonUp.pressing():
+        piston2.set(False)
+    if controller.buttonDown.pressing():
+        piston2.set(True)
+
+    if controller.buttonY.pressing():
+        piston3.set(False)
+    if controller.buttonA.pressing():
+        piston3.set(True)
+
+    wait(10, MSEC)
+
+def user_control():
+    brain.screen.clear_screen()
+    brain.screen.print("driver control")
+
+    while True:
+        driving()
+        intaking()
+        piston()
+        wait(5, MSEC)
+
+# ------------------ AUTON (DRIVE THEN STOP) ------------------
+def auton():
+    left_drive.spin(FORWARD, 40, PERCENT)
+    right_drive.spin(FORWARD, 40, PERCENT)
+
+    wait(0.6, SECONDS)  # adjust until it goes ~12 inches
+
+    left_drive.stop(BRAKE)
+    right_drive.stop(BRAKE)
+
+# ------------------ COMPETITION ------------------
+comp = Competition(user_control, auton)
+
+brain.screen.clear_screen()
+brain.screen.print("READY")

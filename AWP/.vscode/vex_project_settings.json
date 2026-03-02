@@ -1,15 +1,15 @@
 {
 	"extension": {
-		"version": "0.7.2025041600",
+		"version": "0.8.2026020401",
 		"json": 2
 	},
 	"project": {
-		"name": "71774B",
-		"description": "Win",
-		"creationDate": "10/22/2025, 11:33:54 PM",
+		"name": "AWP",
+		"description": "",
+		"creationDate": "3/2/2026, 5:04:31 PM",
 		"platform": "V5",
 		"language": "python",
-		"slot": 8,
+		"slot": 1,
 		"sdkVersion": "V5_1_0_1_25",
 		"python": {
 			"main": "src/main.py"
