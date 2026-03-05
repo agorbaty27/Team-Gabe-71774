@@ -869,9 +869,9 @@ sf_1 = [
 sf_2 = [
     ("drive", -10),
     ("turn", 180),
-    ("distance", 4.5),
+    ("distance", 4),
     ("turn", -90),
-    ("drive", -75),
+    ("drive", -85),
     ("turn", 180),
     ("distance", 18),
     ("turn", 90)
@@ -896,7 +896,7 @@ def sf_skills():
     run_path(sf_1)
     matchload_only()
     run_path(sf_2)
-    matchload_score_right()
+    matchload_score_skills()
     run_path(sf_3)
     left_drive.spin(FORWARD, 80, PERCENT)
     right_drive.spin(FORWARD , 80, PERCENT)

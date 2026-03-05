@@ -1,5 +1,7 @@
 from vex import *
 
+auton_selection = 0
+
 brain=Brain()
 inertial_sensor = Inertial(Ports.PORT15)
 controller = Controller(PRIMARY)
@@ -60,62 +62,6 @@ FIELD_ZERO = inertial_sensor.heading(DEGREES)
 brain.screen.clear_screen()
 brain.screen.print("Inertial Ready")
 
-
-def drive_pid(target_inches, kP=0.06, kI=0.00, kD=0.01):
-    corrected_inches = target_inches * ODOMETRY_CORRECTION
-    target_degrees = (corrected_inches / WHEEL_CIRCUMFERENCE_IN) * 360
-
-    EXIT_THRESHOLD_INCHES = 0.1
-    error_threshold_degrees = (EXIT_THRESHOLD_INCHES / WHEEL_CIRCUMFERENCE_IN) * 360
-    odom_sensor.reset_position()
-    
-    error = 0
-    prev_error = 0
-    integral = 0
-    derivative = 0
-
-    current_power = 0
-    MAX_ACCEL = 0.7   
-
-    while True:
-        current_pos = odom_sensor.position(DEGREES)
-        error = target_degrees - current_pos
-
-        if abs(error) < 50:
-            integral += error
-        else:
-            integral = 0
-            
-        derivative = error - prev_error
-        prev_error = error
-        
-        target_power = (error * kP) + (integral * kI) + (derivative * kD)
-
-      
-        if target_power > 60: target_power = 60
-        if target_power < -60: target_power = -60
-
-        if abs(target_power) < 2.5: target_power = 2.5 if target_power > 0 else -2.5
-
-     
-        if target_power > current_power + MAX_ACCEL:
-            current_power += MAX_ACCEL
-        elif target_power < current_power - MAX_ACCEL:
-            current_power -= MAX_ACCEL
-        else:
-            current_power = target_power
-
-        left_drive.spin(FORWARD, current_power, PERCENT)
-        right_drive.spin(FORWARD, current_power, PERCENT)
-
-        if abs(error) < error_threshold_degrees:
-            break
-        wait(10, MSEC)
-        
-    left_drive.stop(BRAKE)
-    right_drive.stop(BRAKE)
-    wait(10, MSEC)
-
 def turn_pid(target_angle, kP=0.4, kI=0.0001, kD=0.03):
     error = 0
     prev_error = 0
@@ -153,11 +99,11 @@ def turn_pid(target_angle, kP=0.4, kI=0.0001, kD=0.03):
         if at_target_time > 10:
             break
 
-        wait(10, MSEC)
+        wait(3, MSEC)
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
-    wait(10, MSEC)
+    wait(3, MSEC)
 
 def drive_pid_distance(target_distance_in,
                        direction=-1,
@@ -192,7 +138,7 @@ def drive_pid_distance(target_distance_in,
         target_power = (error * kP) + (integral * kI) + (derivative * kD)
 
         # Clamp speed
-        target_power = max(-60, min(60, target_power))
+        target_power = max(-80, min(80, target_power))
 
         # Minimum power so it doesn’t stall
         if abs(target_power) < 2.5:
@@ -213,11 +159,11 @@ def drive_pid_distance(target_distance_in,
         if abs(current_distance - target_distance_in) < EXIT_THRESHOLD_IN:
             break
 
-        wait(10, MSEC)
+        wait(3, MSEC)
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
-    wait(10, MSEC)
+    wait(3, MSEC)
 
 def drive_pid_avg(target_inches, kP=0.08, kI=0.00, kD=0.1):
 
@@ -287,11 +233,11 @@ def drive_pid_avg(target_inches, kP=0.08, kI=0.00, kD=0.1):
         if abs(error) < error_threshold_degrees:
             break
 
-        wait(10, MSEC)
+        wait(3, MSEC)
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
-    wait(10, MSEC)
+    wait(3, MSEC)
 
 
 
@@ -328,7 +274,7 @@ def run_path(steps):
             state = step[1]
             piston2.set(True if state == "down" else False)
 
-        wait(50, MSEC)
+        wait(3, MSEC)
 
 def driving():
     global current_left_speed, current_right_speed
@@ -364,15 +310,7 @@ def driving():
     else:
         left_drive.spin(FORWARD, current_left_speed, PERCENT)
         right_drive.spin(FORWARD, current_right_speed, PERCENT)
-   
-
-
-
-
-
-
-
-
+ 
 def intaking():
     # Main intake (R1/R2)
     if controller.buttonR1.pressing():
@@ -392,7 +330,7 @@ def intaking():
         piston4.set(False)
 
 
-    wait(10, MSEC)
+    wait(5, MSEC)
     
 def piston():
     if controller.buttonX.pressing():
@@ -427,199 +365,19 @@ def oscillate_drive(power=30, time_ms=120, cycles=3):
     left_drive.stop(COAST)
     right_drive.stop(COAST)
 
-path_d = [
-    ("turn", -90)
-]
-
-path_e = [
-    ("drive", -10)
-]
-
-path_f = [
-    ("turn", 90)
-]
-path_matchload = [
-    ("drive", 9.1)
-]
-
-def matchload_score():
-    piston2.set(True)
-    wait(0.25, SECONDS)
-    intake.spin(REVERSE, 100, PERCENT)
-    left_drive.spin(FORWARD, 15, PERCENT)
-    right_drive.spin(FORWARD , 15, PERCENT)
-    wait(7.0, SECONDS)
-    left_drive.spin(REVERSE, 25, PERCENT)
-    right_drive.spin(REVERSE , 25, PERCENT)
-    wait(0.4, SECONDS)
-    run_path(path_d)
-    left_drive.spin(REVERSE, 60, PERCENT)
-    right_drive.spin(REVERSE , 60, PERCENT)
-    wait(0.7, SECONDS)
-    piston4.set(True)
-    intake.spin(REVERSE, 100, PERCENT)
-    wait(1, SECONDS)
-    intake.stop(COAST)
-    piston4.set(False)
-    piston2.set(False)
-    left_drive.spin(FORWARD, 15, PERCENT)
-    right_drive.spin(FORWARD , 15, PERCENT)
-    wait(0.5, SECONDS)  
-    left_drive.spin(REVERSE, 100, PERCENT)
-    right_drive.spin(REVERSE , 100, PERCENT)
-    wait(0.5, SECONDS)
-    left_drive.stop(COAST)
-    right_drive.stop(COAST) 
-
-def matchload_score_right():
-    piston2.set(True)
-    wait(0.25, SECONDS)
-    intake.spin(REVERSE, 100, PERCENT)
-    left_drive.spin(FORWARD, 15, PERCENT)
-    right_drive.spin(FORWARD , 15, PERCENT)
-    wait(2.5, SECONDS)
-    left_drive.stop(COAST)
-    right_drive.stop(COAST)
-    wait(3, SECONDS)
-    intake.stop(COAST)
-    run_path(path_f)
-    intake.spin(REVERSE, 100, PERCENT)
-    left_drive.spin(REVERSE, 60, PERCENT)
-    right_drive.spin(REVERSE , 60, PERCENT)
-    wait(1.75, SECONDS)
-    piston4.set(True)
-    intake.spin(FORWARD, 100, PERCENT)
-    wait(0.1, SECONDS)
-    intake.spin(REVERSE, 100, PERCENT)
-    wait(2.5, SECONDS)
-    intake.stop(COAST)
-    piston4.set(False)
-    piston2.set(False)
-    left_drive.stop(COAST)
-    right_drive.stop(COAST) 
-
-path_left = [
-    ("drive", 31.5),
-    ("turn", -90),
-    ] 
-
-path_2_left = [
-    ("drive", 10.5),
-    ("turn", 0),
-    ("drive", 10.5),
-    ("turn", 90),
-    ("drive", 29),
-    ]
-
-def left_auton(): 
-    run_path(path_left)
-    matchload_score()
-    run_path(path_2_left)
-    piston3.set(True) 
-
 path_none = [
     ("drive", 2), ] 
 
 def no_auton():
     run_path(path_none)
 
-path_right = [
-    ("drive", 31.5),
-    ("turn", 90),
-        ]
-
-path_2_right = [
-    ("drive", 10.5),
-    ("turn", 180),
-    ("drive", 10.5),
-    ("turn", -90),
-    ("drive", 29),
-    ]
-
-path_3_right = [
-    ("drive", 20.5),
-    ("turn", -135),
-    ("drive", 45),
-]
-
-def right_auton():
-    run_path(path_right)
-    matchload_score_right()
-    intake.spin(REVERSE, 100, PERCENT)
-    run_path(path_3_right)
-    intake.spin(FORWARD, 100, PERCENT)
-    
-
-path = [
-    ("drive", 30.0),
-    ("turn", -90),
-    ] 
-
-path_6 = [
-    ("drive", -23),
-    ] 
-
-path_2 = [
-    ("drive", 10),
-    ("turn", 0),
-    ("drive", 11.75),
-    ("turn", 90),
-    ("drive", 82),
-    ("turn", 180),
-    ("drive", 11.75),
-    ("turn", 90),
-            ]
-path_3 = [
-    ("drive", -10),
-    ("turn", -90),
-    ("drive", 90), #important distance
-    ("turn", -90),
-]
-
-path_4 = [
-    ("drive", -10),
-    ("turn", -110), #important turn
-    ("drive", 50),  #important distance
-]
-
-path_a = [
-    ("drive", -10),
-    ("turn", 180),]
-
-path_2a = [
-    ("turn", -90),
-    ("drive", -86),
-    ("turn", 180),
-]
-path_3a = [
-    ("turn", 90),
-]   
-
-path_1b = [
-    ("drive", 10),
-    ("turn", 180),
-]
-
-path_2b = [
-    
-    ("turn", 90),
-    ("drive", -74),
-    ("turn", -135), 
-    ("drive", 43),
-    ("turn", -180), 
-]   
-
-path_c = [
-    ("turn", -90)
-]
-
 def matchload_only():
     piston2.set(True)
     wait(0.25, SECONDS)
     intake.spin(REVERSE, 100, PERCENT)
-    left_drive.spin(FORWARD, 15, PERCENT)
-    right_drive.spin(FORWARD , 15, PERCENT)
-    wait(2, SECONDS)
+    left_drive.spin(FORWARD, 32, PERCENT)
+    right_drive.spin(FORWARD , 32, PERCENT)
+    wait(1.25, SECONDS)
     left_drive.stop(COAST)
     right_drive.stop(COAST)
     wait(3, SECONDS)
@@ -639,21 +397,18 @@ def score_only():
     intake.stop(COAST)
     piston4.set(False)
 
-
-
 def matchload_score_skills():
     piston2.set(True)
     wait(0.25, SECONDS)
     intake.spin(REVERSE, 100, PERCENT)
-    run_path(path_d)
-    left_drive.spin(FORWARD, 15, PERCENT)
-    right_drive.spin(FORWARD, 15, PERCENT)
-    wait(2.5, SECONDS)
+    turn_pid(-90)
+    left_drive.spin(FORWARD, 32, PERCENT)
+    right_drive.spin(FORWARD, 32, PERCENT)
+    wait(1.5, SECONDS)
     left_drive.stop(COAST)
     right_drive.stop(COAST)
     wait(3, SECONDS)
-    intake.stop(COAST)
-    run_path(path_d)
+    turn_pid(-90)
     left_drive.spin(REVERSE, 40, PERCENT)
     right_drive.spin(REVERSE , 40, PERCENT)
     wait(1.5, SECONDS)
@@ -665,75 +420,11 @@ def matchload_score_skills():
     intake.stop(COAST)
     piston4.set(False)
     piston2.set(False)
-    
-
-def skills_auton():
-    piston3.set(True)  
-    run_path(path)
-    matchload_only()
-    intake.spin(REVERSE, 100, PERCENT)
-    piston2.set(False)
-    run_path(path_a)
-    intake.stop(COAST)
-    drive_pid_distance(5.5,direction=-1,)
-    run_path(path_2a)
-    drive_pid_distance(17.5,direction= -1,)
-    run_path(path_3a)
-    score_only()
-    matchload_score_skills()
-    run_path(path_1b)
-    drive_pid_distance(5,direction= -1,)
-    run_path(path_2b)
-    piston2.set(True)
-    left_drive.spin(FORWARD, 80, PERCENT)
-    right_drive.spin(FORWARD , 80, PERCENT)
-    intake.spin(REVERSE, 100, PERCENT)
-    wait(1, SECONDS)
-    left_drive.stop(BRAKE)
-    right_drive.stop(BRAKE)
-    piston2.set(False)
 
 left_testing = [
     ("distance", 17),
     ("turn", 90)
 ]
-
-left_testing_2 = [
-
-    ("drive", 10),
-    ("turn", 0),
-    ("distance", 28.5),
-    ("turn", 90),
-    ("drive", -25)
-
-]
-
-def auton_left_testing():  
-    run_path(left_testing)
-    matchload_score_right()
-    run_path(left_testing_2)
-    piston3.set(True) 
-
-right_testing = [
-    ("distance", 17.5),
-    ("turn", -90)
-]
-
-right_testing_2 = [
-    ("drive", 10),
-    ("turn", 0),
-    ("distance", 5.5),
-    ("turn", -90),
-    ("drive", -25)
-
-]
-def auton_right_testing():  
-    run_path(right_testing)
-    matchload_score()
-    run_path(right_testing_2)
-    piston3.set(True) 
-
-
 
 path_a_testing = [
     ("drive", -10),
@@ -756,9 +447,6 @@ path_b_testing = [
 
 ]   
 
-path_c = [
-    ("turn", 90)
-]
 
 def skills_auton_testing():
     piston3.set(True)  
@@ -773,60 +461,6 @@ def skills_auton_testing():
     matchload_score_skills()
     run_path(path_b_testing)
     piston2.set(True)
-    
-
-
-
-autons = [
-    ("LEFT AUTON", left_auton),
-    ("RIGHT AUTON", right_auton),
-    ("NO AUTON", no_auton),
-    ("SKILLS AUTON", skills_auton)
-]
-
-selected = 0
-confirmed = False
-
-'''def draw_screen():
-    brain.screen.clear_screen()
-    brain.screen.set_cursor(1, 1)
-    brain.screen.print("Select Autonomous")
-    brain.screen.new_line()
-    brain.screen.print("----------------")
-
-    for i, (name, _) in enumerate(autons):
-        brain.screen.new_line()
-        if i == selected:
-            brain.screen.print("> " + name)
-        else:
-            brain.screen.print("  " + name)
-
-# ---- Selection Loop (run BEFORE competition starts) ----
-
-
-
-draw_screen()
-
-while not confirmed:
-    if controller.buttonRight.pressing():
-        selected = (selected + 1) % len(autons)
-        draw_screen()
-        wait(200, MSEC)
-
-    if controller.buttonLeft.pressing():
-        selected = (selected - 1) % len(autons)
-        draw_screen()
-        wait(200, MSEC)
-
-    if controller.buttonA.pressing():
-        confirmed = True
-        brain.screen.clear_screen()
-        brain.screen.print("Selected:")
-        brain.screen.new_line()
-        brain.screen.print(autons[selected][0])
-        wait(500, MSEC)
-'''
-wait(20, MSEC)
 
 def user_control():
     brain.screen.clear_screen()
@@ -851,12 +485,6 @@ def skills_2():
     right_drive.stop(BRAKE)
     piston2.set(False)
 
-testing_left_path = [
-    ("distance", 17.5),
-]
-
-def tuning_auton():
-    run_path(testing_left_path)
 
 sf_1 = [
     ("drive", 10),
@@ -869,9 +497,9 @@ sf_1 = [
 sf_2 = [
     ("drive", -10),
     ("turn", 180),
-    ("distance", 4.5),
+    ("distance", 4),
     ("turn", -90),
-    ("drive", -75),
+    ("drive", -85),
     ("turn", 180),
     ("distance", 18),
     ("turn", 90)
@@ -896,7 +524,7 @@ def sf_skills():
     run_path(sf_1)
     matchload_only()
     run_path(sf_2)
-    matchload_score_right()
+    matchload_score_skills()
     run_path(sf_3)
     left_drive.spin(FORWARD, 80, PERCENT)
     right_drive.spin(FORWARD , 80, PERCENT)
@@ -905,10 +533,42 @@ def sf_skills():
     right_drive.stop(BRAKE)
     piston2.set(False)
     intake.stop(COAST)
+
+def select_auton():
+    global auton_selection
+    while True:
+        brain.screen.clear_screen()
+        brain.screen.set_cursor(1, 1)
+        
+        if auton_selection == 0:
+            brain.screen.print("SELECTED: NONE")
+            brain.screen.set_fill_color(Color.RED)
+        else:
+            brain.screen.print("SELECTED: SF SKILLS")
+            brain.screen.set_fill_color(Color.GREEN)
     
+        brain.screen.draw_rectangle(10, 40, 200, 100)
+        
+        if brain.screen.pressing():
+       
+            auton_selection = 1 if auton_selection == 0 else 0
+        
+            while brain.screen.pressing():
+                wait(10, MSEC)
+        
+        wait(100, MSEC)
+    
+def autonomous_task():
+    if auton_selection == 1:
+        brain.screen.clear_screen()
+        brain.screen.print("Running SF Skills...")
+        sf_skills() 
+    else:
+        brain.screen.clear_screen()
+        brain.screen.print("Auton Disabled (None)")
+        no_auton()
 
 
-
-comp = Competition(user_control, sf_skills)
+comp = Competition(user_control, autonomous_task)
 
 brain.screen.clear_screen()
