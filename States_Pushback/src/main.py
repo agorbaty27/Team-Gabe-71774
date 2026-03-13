@@ -151,7 +151,7 @@ def turn_pid(target_angle, kP=0.4, kI=0.0005, kD=0.03):
         if at_target_time > 50:
             break
 
-        wait(3, MSEC)
+        wait(2, MSEC)
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
@@ -172,7 +172,7 @@ def drive_pid_distance(target_distance_in,
     current_power = 0
     MAX_ACCEL = 1.0
 
-    EXIT_THRESHOLD_IN = 0.8
+    EXIT_THRESHOLD_IN = 0.6
 
     while True:
         # Get readings from both sensors
@@ -216,7 +216,7 @@ def drive_pid_distance(target_distance_in,
         if abs(current_distance - target_distance_in) < EXIT_THRESHOLD_IN:
             break
 
-        wait(3, MSEC)
+        wait(2, MSEC)
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
@@ -290,7 +290,7 @@ def drive_pid_avg(target_inches, kP=0.08, kI=0.00, kD=0.1):
         if abs(error) < error_threshold_degrees:
             break
 
-        wait(3, MSEC)
+        wait(2, MSEC)
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
@@ -331,7 +331,7 @@ def run_path(steps):
             state = step[1]
             piston2.set(True if state == "down" else False)
 
-        wait(3, MSEC)
+        wait(2, MSEC)
 
 def driving():
     global current_left_speed, current_right_speed
@@ -452,7 +452,7 @@ def score_only():
     intake.spin(FORWARD, 100, PERCENT)
     wait(0.1, SECONDS)
     intake.spin(REVERSE, 100, PERCENT)
-    wait(2.25, SECONDS)
+    wait(1.8, SECONDS) #change victor
     intake.stop(COAST)
 
 def matchload_score_skills():
@@ -471,14 +471,14 @@ def matchload_score_skills():
     left_drive.spin(FORWARD, 2, PERCENT)
     right_drive.spin(FORWARD , 2, PERCENT)
     wait(1.5, SECONDS)
-    left_drive.spin(REVERSE, 30, PERCENT)
-    right_drive.spin(REVERSE , 30, PERCENT)
+    left_drive.spin(REVERSE, 32, PERCENT)
+    right_drive.spin(REVERSE , 32, PERCENT)
     wait(1.25, SECONDS)
     piston4.set(True)
     intake.spin(FORWARD, 100, PERCENT)
     wait(0.1, SECONDS)
     intake.spin(REVERSE, 100, PERCENT)
-    wait(1.5, SECONDS)
+    wait(1.4, SECONDS) #change victor
     intake.stop(COAST)
     piston4.set(False)
 
@@ -507,7 +507,7 @@ def matchload_score_skills_2():
     intake.spin(FORWARD, 100, PERCENT)
     wait(0.1, SECONDS)
     intake.spin(REVERSE, 100, PERCENT)
-    wait(1.5, SECONDS)
+    wait(1.4, SECONDS) #change victor
     intake.stop(COAST)
     piston4.set(False)
 
@@ -549,8 +549,10 @@ def matchload_score_match_2():
     left_drive.stop(COAST)
     right_drive.stop(COAST)
     wait(1, SECONDS)
-    intake.stop(COAST)
     turn_pid(-90)
+    left_drive.spin(FORWARD, 2, PERCENT)
+    right_drive.spin(FORWARD , 2, PERCENT)
+    wait(0.5, SECONDS)
     left_drive.spin(REVERSE, 40, PERCENT)
     right_drive.spin(REVERSE , 40, PERCENT)
     wait(1, SECONDS)
@@ -645,13 +647,13 @@ sf_2 = [
     ("turn", -130),
     ("drive", -105),
     ("turn", 180),
-    ("distance", 19),
+    ("distance", 18),
     ("turn", 90)
 ]
 
 sf_3 = [
     ("drive", 10),
-    ("turn", 140)
+    ("turn", 135) #change victor 
 ]
 
 def sf_skills():
@@ -672,9 +674,10 @@ def sf_skills():
     matchload_score_skills_2()
     run_path(sf_3)
     piston2.set(False)
+    intake.spin(REVERSE, 100, PERCENT)
     left_drive.spin(FORWARD, 90, PERCENT)
     right_drive.spin(FORWARD , 90, PERCENT)
-    wait(1.3, SECONDS)
+    wait(1.6, SECONDS) #victor change
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
     piston2.set(False)
