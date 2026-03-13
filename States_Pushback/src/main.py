@@ -46,7 +46,6 @@ BIG_WHEEL_CIRCUMFERENCE_IN = math.pi * 3.25 * 0.75
 ODOMETRY_CORRECTION = 1  # Multiply drive distance by this value
 TURNING_CORRECTION = 1   # Multiply turn angle by this value
 
-FIELD_ZERO = inertial_sensor.heading(DEGREES)
 
 SMOOTHING = 0.12
 
@@ -55,71 +54,66 @@ current_right_speed = 0
 # Initialize both sensors
 brain.screen.print("Calibrating Inertials...")
 inertial_sensor.calibrate()
-inertial_sensor_2.calibrate()
 
-while inertial_sensor.is_calibrating() or inertial_sensor_2.is_calibrating():
+while inertial_sensor.is_calibrating():
     wait(100, MSEC)
 
 # Set the field zero based on the average of both
-FIELD_ZERO = (inertial_sensor.heading(DEGREES) + inertial_sensor_2.heading(DEGREES)) / 2.0
+FIELD_ZERO = inertial_sensor.heading(DEGREES)
 
 brain.screen.clear_screen()
 brain.screen.print("Inertials Ready")
 
+'''
 def turn_pid(target_angle, kP=0.4, kI=0.0005, kD=0.03):
-    error = 0
     prev_error = 0
     integral = 0
     at_target_time = 0
-
-    target_angle %= 360  # safety wrap
+    target_angle %= 360 
 
     while True:
         # 1. Get current absolute heading for BOTH sensors
-        current1 = (inertial_sensor.heading(DEGREES) - FIELD_ZERO) % 360
-        current2 = (inertial_sensor_2.heading(DEGREES) - FIELD_ZERO) % 360
+        # We handle the FIELD_ZERO offset individually
+        c1 = (inertial_sensor.heading(DEGREES) - FIELD_ZERO) % 360
+        c2 = (inertial_sensor_2.heading(DEGREES) - FIELD_ZERO) % 360
 
-        # 2. Calculate shortest-path error for BOTH sensors individually
-        error1 = ((target_angle - current1 + 180) % 360) - 180
-        error2 = ((target_angle - current2 + 180) % 360) - 180
+        # 2. Calculate shortest-path error for each sensor separately
+        # This is the "magic" that prevents the robot from turning the wrong way
+        e1 = ((target_angle - c1 + 180) % 360) - 180
+        e2 = ((target_angle - c2 + 180) % 360) - 180
 
-        # 3. Average the errors (This is the "Two-Sensor" magic)
-        # This prevents the 0/360 glitch because errors are always small numbers
-        error = (error1 + error2) / 2.0
+        # 3. Average the errors
+        error = (e1 + e2) / 2.0
 
-        # --- Rest of your logic remains identical ---
         if abs(error) < 15:
             integral += error
         else:
             integral = 0
 
         derivative = error - prev_error
-        prev_error = error
-
         power = (error * kP) + (integral * kI) + (derivative * kD)
+        prev_error = error
         
-        # Clamp power
         power = max(-80, min(80, power))
 
-        # Spin motors (Standard VEX direction: Positive error = Right turn)
+        # Standard VEX: Positive power = Right Turn
         left_drive.spin(FORWARD, power, PERCENT)
         right_drive.spin(REVERSE, power, PERCENT)
 
-        # Exit logic
-        if abs(error) < 1:
-            at_target_time += 10 # Note: If wait is 10ms, this is accurate
+        if abs(error) < 1.5: # Slightly wider tolerance for stability
+            at_target_time += 10
         else:
             at_target_time = 0
 
-        if at_target_time > 50: # 50ms of stability
+        if at_target_time >= 100: # Stay settled for 100ms
             break
 
-        wait(10, MSEC) # Updated to 10ms to match V5 sensor refresh rate
+        wait(10, MSEC) # 10ms matches the physical sensor update rate
 
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
-    wait(10, MSEC)
 '''
+
 def turn_pid(target_angle, kP=0.4, kI=0.0005, kD=0.03):
     error = 0
     prev_error = 0
@@ -162,7 +156,7 @@ def turn_pid(target_angle, kP=0.4, kI=0.0005, kD=0.03):
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
     wait(10, MSEC)
-'''
+
 
 def drive_pid_distance(target_distance_in,
                        direction=-1,
@@ -208,62 +202,6 @@ def drive_pid_distance(target_distance_in,
             target_power = 2.5 if target_power > 0 else -2.5
 
         # Accel limiting
-        if target_power > current_power + MAX_ACCEL:
-            current_power += MAX_ACCEL
-        elif target_power < current_power - MAX_ACCEL:
-            current_power -= MAX_ACCEL
-        else:
-            current_power = target_power
-
-        left_drive.spin(FORWARD, current_power, PERCENT)
-        right_drive.spin(FORWARD, current_power, PERCENT)
-
-        # Exit when close enough
-        if abs(current_distance - target_distance_in) < EXIT_THRESHOLD_IN:
-            break
-
-        wait(3, MSEC)
-
-    left_drive.stop(BRAKE)
-    right_drive.stop(BRAKE)
-    wait(10, MSEC)
-
-    # direction = 1  -> drive forward toward object
-    # direction = -1 -> drive backward away from object
-
-    error = 0
-    prev_error = 0
-    integral = 0
-
-    current_power = 0
-    MAX_ACCEL = 2.0
-
-    EXIT_THRESHOLD_IN = 0.8
-
-    while True:
-        # Distance sensor returns MM
-        current_distance = distance.object_distance(INCHES)
-
-        error = (current_distance - target_distance_in) * direction
-
-        if abs(error) < 6:
-            integral += error
-        else:
-            integral = 0
-
-        derivative = error - prev_error
-        prev_error = error
-
-        target_power = (error * kP) + (integral * kI) + (derivative * kD)
-
-        # Clamp speed
-        target_power = max(-80, min(80, target_power))
-
-        # Minimum power so it doesn’t stall
-        if abs(target_power) < 2.5:
-            target_power = 2.5 if target_power > 0 else -2.5
-
-        # Accel limiting (same as your drive PID)
         if target_power > current_power + MAX_ACCEL:
             current_power += MAX_ACCEL
         elif target_power < current_power - MAX_ACCEL:
@@ -611,9 +549,6 @@ def matchload_score_match_2():
     left_drive.stop(COAST)
     right_drive.stop(COAST)
     wait(1, SECONDS)
-    left_drive.spin(FORWARD, 2, PERCENT)
-    right_drive.spin(FORWARD , 2, PERCENT)
-    wait(0.5, SECONDS)
     intake.stop(COAST)
     turn_pid(-90)
     left_drive.spin(REVERSE, 40, PERCENT)
@@ -701,7 +636,6 @@ sf_1 = [
     ("drive", 12),
     ("turn", 180),
     ("drive", -90),
-    ("turn", 180),
     ("distance", 18),
     ("turn", -90),
 ]
@@ -740,7 +674,7 @@ def sf_skills():
     piston2.set(False)
     left_drive.spin(FORWARD, 90, PERCENT)
     right_drive.spin(FORWARD , 90, PERCENT)
-    wait(1.5, SECONDS)
+    wait(1.3, SECONDS)
     left_drive.stop(BRAKE)
     right_drive.stop(BRAKE)
     piston2.set(False)
@@ -755,8 +689,11 @@ wing_left = [
 ]
 
 low_score = [
-    ("turn", 45)]
-
+    ("turn", 10),
+    ("drive", 16),
+    ("turn", 45),
+    ("drive", 10)
+]
 
 def match_auton_left():
   
@@ -771,8 +708,9 @@ def match_auton_right():
     piston3.set(True)  
     run_path(right_testing)
     matchload_score_match_2()
+    piston2.set(False)
     intake.spin(REVERSE, 100, PERCENT)
     run_path(low_score)
-    intake.stop()
+    intake.spin(FORWARD, 80, PERCENT)
 
 comp = Competition(user_control, sf_skills)
